@@ -32,4 +32,10 @@ public class Server {
         }
     }
 
+    public static void main(String[] args) throws IOException {
+        syslog(1,8,"START");
+        Server server = new Server();
+        server.startServer();
+    }
+
 }
