@@ -30,13 +30,13 @@ public class Config {
     }
     public String getDisconnectMSG() {return disconnectMSG;}
 
-    static Config readConfigFromFile(String fileName) {
+    public Config readConfigFromFile(String fileName) {
         try (Reader reader = new FileReader(fileName)) {
             Gson gson = new Gson();
             JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
             return gson.fromJson(jsonObject, Config.class);
         } catch (IOException e) {
-            syslog(1,1,"Error: File konnte nicht gelesen werden");
+            syslog(1,1,"File konnte nicht gelesen werden");
             return null;
         }
     }
