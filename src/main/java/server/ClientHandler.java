@@ -1,16 +1,18 @@
 package server;
 
-import java.io.BufferedInputStream;
+import config.Config;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 
 import static syslog.Syslog.syslog;
 
 public class ClientHandler implements Runnable {
 
+    private Config config = new Config().readConfigFromFile("src/main/resources/config.json");
     private final Socket socket;
     ClientHandler(Socket socket) { this.socket = socket; }
 
@@ -19,19 +21,26 @@ public class ClientHandler implements Runnable {
         try {
             // TODO in while loop
             syslog(1,8,"Accepted new Client");
+            welcomeClient();
             DataInputStream dataIn = new DataInputStream(socket.getInputStream()); // new BufferedInputStream(socket.getInputStream())
             DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
 
-            byte[] arr = new byte[255];
-            String command = String.valueOf(dataIn.read(arr,0, arr.length)); // encoded in modified UTF-8 format
-            if (dataIn.available() > 0) {syslog(1,4,"Message over 255 bytes received");} // TODO needs to be in validation Method
-            syslog(1,8, Arrays.toString(arr));
+            while (socket.isConnected()) {
+                byte[] arr = new byte[255];
+                String command = String.valueOf(dataIn.read(arr,0, arr.length));// encoded in modified UTF-8 format
 
-            validateCommand(arr); // TODO
+                if (dataIn.available() > 0) {
+                    syslog(1,4,"Message over 255 bytes received");
+                } else {
 
-            String response = handleCommand(command);
+                    validateCommand(arr);
+                    String response = handleCommand(command);
 
-            dataOut.writeUTF(response);
+                    dataOut.writeUTF(response);
+                    // TODO needs to be in validation Method
+                }
+              /*  syslog(1,8, Arrays.toString(arr));*/
+            }
 
             socket.close();
         } catch (IOException e) {
@@ -46,5 +55,12 @@ public class ClientHandler implements Runnable {
 
     private String validateCommand(byte[] command) {
         return null;
+    }
+
+    private void welcomeClient() {
+        System.out.println(config.getWelcomeMSG());
+        for (String command : config.getCommands()) {
+            System.out.println(command);
+        }
     }
 }

@@ -3,5 +3,13 @@
   "maxClients": 3,
   "port": 4242,
   "timeToShutdown": 30,
-  "disconnectMSG": "No more Clients allowed."
+  "disconnectMSG": "No more Clients allowed.",
+  "welcomeMSG": "Welcome to the Server! Hier ist eine Liste mit den zur verfügung stehenden Kommandos. \nBitte beachte das maximal 255 Zeichen eingelesen werden können..",
+  "commands": [
+    "\tLOWERCASE <string> | Umwandeln einer Zeichenkette in Kleinbuchstaben.",
+    "\tUPPERCASE <string> | Umwandeln einer Zeichenkette in Großbuchstaben.",
+    "\tREVERSE <string> | Umkehrung der Zeichenkette „abc“ → „cba“",
+    "\tBYE | Sitzungsende, nur der Client wird getrennt.",
+    "\tSHUTDOWN <password> | Sitzungsende und Herunterfahren des Servers"
+  ]
 }

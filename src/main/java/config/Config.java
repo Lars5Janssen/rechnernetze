@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.List;
 
 import static syslog.Syslog.syslog;
 
@@ -17,6 +18,8 @@ public class Config {
     private int port;
     private String disconnectMSG;
     private long timeToShutdown;
+    private List<String> commands;
+    private String welcomeMSG;
 
     public String getPassword() {
         return password;
@@ -29,6 +32,10 @@ public class Config {
         return port;
     }
     public String getDisconnectMSG() {return disconnectMSG;}
+
+    public List<String> getCommands() {return commands;}
+
+    public String getWelcomeMSG() {return welcomeMSG;}
 
     public Config readConfigFromFile(String fileName) {
         try (Reader reader = new FileReader(fileName)) {
