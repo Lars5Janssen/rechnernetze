@@ -25,7 +25,7 @@ public class ClientHandler implements Runnable {
             DataInputStream dataIn = new DataInputStream(socket.getInputStream()); // new BufferedInputStream(socket.getInputStream())
             DataOutputStream dataOut = new DataOutputStream(socket.getOutputStream());
 
-            while (socket.isConnected()) {
+            while (!socket.isClosed()) {
                 byte[] arr = new byte[255];
                 String command = String.valueOf(dataIn.read(arr,0, arr.length));// encoded in modified UTF-8 format
 
