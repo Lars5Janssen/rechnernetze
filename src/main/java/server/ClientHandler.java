@@ -1,11 +1,9 @@
 package server;
 
 import config.Config;
+import org.apache.commons.lang3.StringUtils;
 
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -25,33 +23,34 @@ public class ClientHandler implements Runnable {
     @Override
     public void run() {
         try {
-            // TODO in while loop
             syslog(1,8,"Accepted new Client");
-             // new BufferedInputStream(socket.getInputStream())
             dataIn = new DataInputStream(socket.getInputStream());
             dataOut = new DataOutputStream(socket.getOutputStream());
             welcomeClient(dataOut);
 
             while (!socket.isClosed()) {
+                messageToClient("Der Server erwartet eine eingabe:\n");
 
-                byte[] arr = new byte[255];
-                String command = String.valueOf(dataIn.read(arr,0, arr.length));// encoded in modified UTF-8 format
+                byte[] userInput = new byte[255];
+
+                int messageLength = dataIn.read(userInput,0, userInput.length);// encoded in modified UTF-8 format
+                userInput = Arrays.copyOfRange(userInput, 0, messageLength);
 
                 if (dataIn.available() > 0) { // Check if the stream have anything inside anymore
                     syslog(1,4,"Message over 255 bytes received");
                     messageToClient("Nachricht ist laenger als 255 Zeichen!\n");
                     dataIn.skip(dataIn.available());
-
-                } else {
-                    dataOut.writeUTF("Der Server erwaret eine eingabe:\n");
-
-                    validateCommand(arr);
-                    String response = handleCommand(command);
-
-                    dataOut.writeUTF(response);
-                    // TODO needs to be in validation Method
+                    continue;
                 }
-              /*  syslog(1,8, Arrays.toString(arr));*/
+
+                syslog(1,8,"Before " + Arrays.toString(userInput));
+                /*validateCommand(userInput);*/
+                String responseUtf8 = convertToUTF8(userInput);
+                syslog(1,8,"Between: " + responseUtf8);
+                String response = handleCommand(responseUtf8);
+
+                messageToClient(response);
+                // TODO needs to be in validation Method
             }
 
             socket.close();
@@ -61,12 +60,13 @@ public class ClientHandler implements Runnable {
     }
 
     private String handleCommand(String command) { // TODO
-        syslog(1,8, "Handling command: " + command + "\n");
+        syslog(1,8, "Handling command: " + command);
         return command;
     }
 
-    private String validateCommand(byte[] command) {
-        return null;
+    private void messageToClient(String message) throws IOException {
+        syslog(1,8,"Sending message to client: " + message);
+        dataOut.writeUTF("Server antwort: " + message);
     }
 
     private void welcomeClient(DataOutputStream dataOut) throws IOException {
@@ -76,7 +76,13 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private void messageToClient(String message) throws IOException {
-        dataOut.writeUTF(message);
+    private String validateCommand(byte[] command) {
+        return null;
     }
+
+    private String convertToUTF8(byte[] arr) {
+       return StringUtils.toEncodedString(arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 libary
+    }
+
+
 }

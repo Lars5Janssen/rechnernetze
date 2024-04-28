@@ -6,10 +6,10 @@
   "disconnectMSG": "No more Clients allowed.",
   "welcomeMSG": "Welcome to the Server!\nHier ist eine Liste mit den zur verfuegung stehenden Kommandos.\nBitte beachte das maximal 255 Zeichen eingelesen werden koennen..\n",
   "commands": [
-    "\tLOWERCASE <string> | Umwandeln einer Zeichenkette in Kleinbuchstaben.\n",
-    "\tUPPERCASE <string> | Umwandeln einer Zeichenkette in Grossbuchstaben.\n",
-    "\tREVERSE <string> | Umkehrung der Zeichenkette abc zu cba\n",
-    "\tBYE | Sitzungsende, nur der Client wird getrennt.\n",
-    "\tSHUTDOWN <password> | Sitzungsende und Herunterfahren des Servers\n"
+    "LOWERCASE <string> | Umwandeln einer Zeichenkette in Kleinbuchstaben.\n",
+    "UPPERCASE <string> | Umwandeln einer Zeichenkette in Grossbuchstaben.\n",
+    "REVERSE <string> | Umkehrung der Zeichenkette abc zu cba\n",
+    "BYE | Sitzungsende, nur der Client wird getrennt.\n",
+    "SHUTDOWN <password> | Sitzungsende und Herunterfahren des Servers\n"
   ]
 }
