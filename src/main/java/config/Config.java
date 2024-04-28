@@ -20,6 +20,7 @@ public class Config {
     private long timeToShutdown;
     private List<String> commands;
     private String welcomeMSG;
+    private boolean logMessages;
 
     public String getPassword() {
         return password;
@@ -32,6 +33,7 @@ public class Config {
         return port;
     }
     public String getDisconnectMSG() {return disconnectMSG;}
+    public boolean isLogMessages() {return logMessages;}
 
     public List<String> getCommands() {return commands;}
 
