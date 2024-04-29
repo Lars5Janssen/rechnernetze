@@ -25,57 +25,65 @@ public class ClientHandler implements Runnable {
     ClientHandler(Socket socket) { this.socket = socket; }
 
     @Override
-    public void run() {
-        try {
-            syslog(1,8,"Accepted new Client");
-            dataIn = new DataInputStream(socket.getInputStream());
-            dataOut = new DataOutputStream(socket.getOutputStream());
+    public void run(){
+            try {
+                syslog(1,8,"Accepted new Client");
+                dataIn = new DataInputStream(socket.getInputStream());
+                dataOut = new DataOutputStream(socket.getOutputStream());
+                userInput = new StringBuilder();
 
-            boolean whileFlag; //TODO RENAME
 
-            welcomeClient();
 
-            while (!socket.isClosed()) {
-                messageToClient("\nDer Server erwartet eine eingabe:\n");
                 whileFlag = false;
 
-                while (!whileFlag) {
-                    readSocketStream();
+                //welcomeClient();
 
-                    if (dataIn.available() > 0) { // Check if the stream have anything inside anymore
-                        handleMessageOverSizeLimit();
-                        break;
-                    }
+                while (!socket.isClosed()) {
+                    messageToClient("Der Server erwartet eine eingabe:\n");
+                    whileFlag = false;
 
-                    userInput.append(convertToUTF8(streamBuffer));
+                    while (!whileFlag) {
+                        readSocketStream();
 
-                    if (userInput.toString().getBytes(StandardCharsets.UTF_8).length > 255) {
-                        handleMessageOverSizeLimit();
-                        break;
-                    }
+                        if (dataIn.available() > 0) { // Check if the stream have anything inside anymore
+                            handleMessageOverSizeLimit();
+                            break;
+                        }
 
-                    int newLineIndex = userInput.indexOf("\n");
-                    if (newLineIndex != -1) {
-                        if (newLineIndex != userInput.length() || newLineIndex != userInput.lastIndexOf("\n")) {
-                            // TODO handle this
-                        } else {
-                            whileFlag = true;
+                        userInput.append(convertToUTF8(streamBuffer));
+
+                        if (userInput.toString().getBytes(StandardCharsets.UTF_8).length > 255) {
+                            handleMessageOverSizeLimit();
+                            break;
+                        }
+
+                        int newLineIndex = userInput.indexOf("\n");
+                        int lastNewLineIndex = userInput.lastIndexOf("\n");
+                        syslog(1,8, String.format("\nString: %s\nFirst NL: %s\nLast NL: %s\nLength: %s\n",userInput.toString().replace("\n","NL"),newLineIndex,lastNewLineIndex,userInput.length()));
+
+                        if (newLineIndex != -1) {
+                            if (newLineIndex != lastNewLineIndex ) {
+                                syslog(1,4, "ERR");
+                            } else {
+                                whileFlag = true;
+                            }
+                            if (lastNewLineIndex != userInput.length()-1) {
+                                syslog(1,4,"E");
+                            }
                         }
                     }
+
+                    validateCommand(streamBuffer);
+                    String responseUtf8 = convertToUTF8(streamBuffer);
+                    String response = handleCommand(responseUtf8);
+
+                    messageToClient(response);
+                    // TODO needs to be in validation Method
                 }
-
-                validateCommand(streamBuffer);
-                String responseUtf8 = convertToUTF8(streamBuffer);
-                String response = handleCommand(responseUtf8);
-
-                messageToClient(response);
-                // TODO needs to be in validation Method
+                socket.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
-
-            socket.close();
-        } catch (IOException e) {
-            syslog(1,4,"Could not establish connection to new client");
-        }
     }
 
     private String handleCommand(String command) { // TODO
@@ -88,7 +96,9 @@ public class ClientHandler implements Runnable {
     }
     private void readSocketStream() throws IOException{
         streamBuffer = new byte[255];
-        int messageLength = dataIn.read(streamBuffer, 0, streamBuffer.length);// encoded in modified UTF-8 format
+        int messageLength = 0;// encoded in modified UTF-8 format
+        messageLength = dataIn.read(streamBuffer, 0, streamBuffer.length);
+
         streamBuffer = Arrays.copyOfRange(streamBuffer, 0, messageLength); // cut array to the actual message length
     }
     private void handleMessageOverSizeLimit() throws IOException{
@@ -99,16 +109,21 @@ public class ClientHandler implements Runnable {
         streamBuffer = new byte[255];
     }
 
-    private void messageToClient(String message) throws IOException {
+    private void messageToClient(String message) throws IOException{
         syslog(1,8,"Sending message to client: " + message);
         dataOut.writeUTF(message);
     }
 
-    private void welcomeClient() throws IOException {
-        dataOut.writeUTF(config.getWelcomeMSG());
-        for (String command : config.getCommands()) {
-            dataOut.writeUTF(command);
+    private void welcomeClient(){
+        try {
+            dataOut.writeUTF(config.getWelcomeMSG());
+            for (String command : config.getCommands()) {
+                dataOut.writeUTF(command);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
+        
     }
 
     private String validateCommand(byte[] command) {
