@@ -4,6 +4,7 @@
   "port": 4242,
   "timeToShutdown": 30,
   "disconnectMSG": "No more Clients allowed.",
+  "packageLength": 255,
   "welcomeMSG": "Welcome to the Server!\nHier ist eine Liste mit den zur verfuegung stehenden Kommandos.\nBitte beachte das maximal 255 Zeichen eingelesen werden koennen..\n",
   "commands": [
     "LOWERCASE <string> | Umwandeln einer Zeichenkette in Kleinbuchstaben.\n",
