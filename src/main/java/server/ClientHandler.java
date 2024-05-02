@@ -15,7 +15,6 @@ public class ClientHandler implements Runnable {
     private Config config = new Config().readConfigFromFile("src/main/resources/config.json");
     private final Socket socket;
 
-    private boolean whileFlag;
     private byte[] streamBuffer = new byte[255];
     private StringBuilder userInputBuild;
     private DataInputStream dataIn;
@@ -39,8 +38,6 @@ public class ClientHandler implements Runnable {
         while (!socket.isClosed()) {
             messageToClient("Der Server erwartet eine eingabe:\n");
             String userInput = getUserInput();
-            whileFlag = false;
-
 
             validateCommand(streamBuffer);
             String responseUtf8 = convertToUTF8(streamBuffer);
