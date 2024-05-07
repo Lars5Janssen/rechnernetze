@@ -22,3 +22,38 @@ Use SCP to secure our work
 
 ## Wie ich erkenne welche root rechte ich habe
 cmd: cat /etc/group | grep "userName"    (in diesem fall ist userName = padawan)
+
+## Hilfestellung / CheatSheet
+### Image bauen
+```bash
+# cd $ORDER_MIT_Dockerfile
+docker build -t snakeoil:latest .
+```
+
+### Image im Container starten
+```bash
+docker run -d -p 80:80 -p 443:443 -p 127.0.0.1:2222:222 --name snakeoil snakeoil:latest 
+``` 
+
+### Terminal im Container verwenden
+```bash
+docker exec -ti snakeoil bash -c 'cd "/userdata/webportal" && echo Hallo ${CI_PROJECT_NAME} && bash' 
+``` 
+
+### Container stoppen
+```bash
+docker stop snakeoil
+```
+
+### Container löschen
+```bash
+docker rm snakeoil
+```
+
+### Images löschen / Speicherplatz schaffen
+```bash
+# Vorhandene Images listen
+docker images
+# Ausgewähltes Image löschen
+docker rmi $IMAGE_ID
+```
