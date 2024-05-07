@@ -19,3 +19,6 @@ Use SCP to secure our work
 7. untar\
   `tar -xzvf [File you want to unzip]`
 8. Add to repository
+
+## Wie ich erkenne welche root rechte ich habe
+cmd: cat /etc/group | grep <userName>    (in diesem fall ist userName = padawan)
