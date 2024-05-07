@@ -21,4 +21,4 @@ Use SCP to secure our work
 8. Add to repository
 
 ## Wie ich erkenne welche root rechte ich habe
-cmd: cat /etc/group | grep <userName>    (in diesem fall ist userName = padawan)
+cmd: cat /etc/group | grep "<userName>"    (in diesem fall ist userName = padawan)
