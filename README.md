@@ -38,7 +38,8 @@ docker run -d -p 80:80 -p 443:443 -p 127.0.0.1:2222:222 --name snakeoil snakeoil
 ### Terminal im Container verwenden
 ```bash
 docker exec -ti snakeoil bash -c 'bash' 
-``` 
+```
+
 ```
 docker exec -ti snakeoil bash -c 'cd "/userdata/webportal" && echo Hallo ${CI_PROJECT_NAME} && bash'
 ``
