@@ -12,7 +12,7 @@ import static syslog.Syslog.syslog;
 
 public class ClientHandler implements Runnable {
 
-    private Config config = new Config().readConfigFromFile("src/main/resources/config.json");
+    private Config config = new Config().readConfigFromFile("src/main/resources/main/config.json");
     private final Socket socket;
     private byte[] streamBuffer = new byte[config.getPackageLength()];
     private StringBuilder userInputBuild;
