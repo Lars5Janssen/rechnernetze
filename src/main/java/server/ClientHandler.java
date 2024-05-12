@@ -15,7 +15,7 @@ public class ClientHandler implements Runnable {
     private Config config = new Config().readConfigFromFile("src/main/resources/config.json");
     private final Socket socket;
 
-    private byte[] streamBuffer = new byte[255];
+    private byte[] streamBuffer = new byte[config.getPackageLength()];
     private StringBuilder userInputBuild;
     private DataInputStream dataIn;
     private DataOutputStream dataOut ;
@@ -36,7 +36,9 @@ public class ClientHandler implements Runnable {
     public void run(){
 
         while (!socket.isClosed()) {
+            // welcomeClient();
             messageToClient("Der Server erwartet eine eingabe:\n");
+
             String userInput = getUserInput();
 
             validateCommand(streamBuffer);
@@ -56,20 +58,25 @@ public class ClientHandler implements Runnable {
 
     private String getUserInput() {
         userInputBuild = new StringBuilder();
-        byte[] streamBuffer = new byte[config.getPackageLength()];
+        byte[] streamBuffer;
         int messageLength = 0;
-        boolean continueToReadInputStream = true;
 
-        while (continueToReadInputStream) {
+        // Break when one command found
+        while (!socket.isClosed()) {
             // Get set length of bytes from input stream (length set in config)
             // and transfer them to stringBuilder, while cutting null bytes added by dataIn.read
             streamBuffer = new byte[config.getPackageLength()];
+
             try {
                 messageLength = dataIn.read(streamBuffer, 0, streamBuffer.length);
             } catch (IOException e) {
                 syslog(1,1, "Could not read from dataIn");
+                closeSocket();
             }
-            streamBuffer = Arrays.copyOfRange(streamBuffer, 0, messageLength); // cut array to the actual message length
+
+            if (checkMaxPackageLength(messageLength)) {
+                streamBuffer = Arrays.copyOfRange(streamBuffer, 0, messageLength); // cut array to the actual message length
+            };
 
             // Check if there are more bytes
             // if there are, there were more than max packageLength of bytes.\
@@ -117,15 +124,43 @@ public class ClientHandler implements Runnable {
 
                 } else { // everything is fine. the string is ok. Exit while loop
                     syslog(1,8,"The user input is valid.");
-                    continueToReadInputStream = false;
-                    // TODO handle exit
-
+                    break;
                 }
             }
         }
 
         return userInputBuild.toString();
     }
+
+    private boolean dataAvailable() {
+        try {
+            if (dataIn.available() > 0) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch (IOException e) {
+            syslog(1,1,"Could not check if data is available");
+            throw new RuntimeException(e);
+        }
+    }
+
+    private boolean checkMaxPackageLength(int messageLength) {
+        if (messageLength > config.getPackageLength()) {
+            return false;
+        }
+        return true;
+    }
+
+    private void closeSocket() {
+        try {
+            socket.close();
+        } catch (IOException e) {
+            syslog(1,1,"Could not close socket");
+            throw new RuntimeException(e);
+        }
+    }
+
     private String handleCommand(String command) { // TODO
         syslog(1,8, "Handling command: " + command);
         return command;
@@ -150,24 +185,19 @@ public class ClientHandler implements Runnable {
     }
 
     private void messageToClient(String message) {
-        syslog(1,8,"Sending message to client: " + message);
+        syslog(1,8,"Sending message to client: " + message + "\n");
         try {
-            dataOut.writeUTF(message);
+            dataOut.writeBytes(message + "\n");
         } catch (IOException e) {
             syslog(1,1,"Could not message client");
         }
     }
 
     private void welcomeClient(){
-        try {
-            dataOut.writeUTF(config.getWelcomeMSG());
-            for (String command : config.getCommands()) {
-                dataOut.writeUTF(command);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
+        messageToClient(config.getWelcomeMSG());
+        for (String command : config.getCommands()) {
+            messageToClient(command);
         }
-        
     }
 
     private String validateCommand(byte[] command) {

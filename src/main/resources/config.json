@@ -1,6 +1,6 @@
 {
   "password": "H",
-  "maxClients": 3,
+  "maxClients": 1,
   "port": 4242,
   "timeToShutdown": 30,
   "disconnectMSG": "No more Clients allowed.",
