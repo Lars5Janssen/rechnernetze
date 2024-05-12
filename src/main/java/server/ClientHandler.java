@@ -38,12 +38,14 @@ public class ClientHandler implements Runnable {
             // welcomeClient();
             messageToClient("Der Server erwartet eine eingabe:\n");
 
-            String userInput = getUserInput();
+            String userInput = getUserInput(); // TODO implement threaded queue system
 
             if (validateCommand(userInput)) {
-                String response = handleCommand(userInput);
+                String response = handleMessage(userInput);
 
                 messageToClient(response);
+            } else {
+                messageToClient("YOU DONE FUCKED UP NOW BITCH");
             }
             // TODO needs to be in validation Method
         }
@@ -130,13 +132,54 @@ public class ClientHandler implements Runnable {
 
         return userInputBuild.toString();
     }
-    private boolean validateCommand(String command) {
+    private boolean validateCommand(String message) {
+        syslog(1,8,message);
+        String[] commands = new String[config.getCommands().size()];
+        for (int i = 0; i < config.getCommands().size(); i++) {
+            commands[i] = config.getCommands().get(i).split(" ")[0];
+        }
 
-        return true;
+        for (String command : commands) {
+            if (message.indexOf(command) == 0) {
+                if (command.equals("BYE") && message.length() == 4) return true;
+                else if (command.equals("SHUTDOWN") && message.length() == 9) return true;
+                else if (command.equals("BYE") || command.equals("SHUTDOWN")) return false;
+
+                if (message.indexOf(" ") == command.length()) return true;
+            }
+        }
+        return false;
     }
-    private String handleCommand(String command) { // TODO
-        syslog(1,8, "Handling command: " + command);
-        return command;
+    private String handleMessage(String message) { // TODO
+        syslog(1,8, "Handling message: " + message);
+        String[] messageSplit = message.split(" ");
+        String command = messageSplit[0];
+        String parameters = messageSplit[1];
+        switch (command) {
+            case "LOWERCASE":
+                return parameters.toLowerCase();
+
+            case "UPPERCASE":
+                return parameters.toUpperCase();
+
+            case "REVERSE":
+                return new StringBuilder(parameters).reverse().toString();
+
+            case "BYE":
+                handleBye();
+                return command;
+
+            case "SHUTDOWN":
+                handleShutdown();
+                return command;
+        }
+        return message;
+    }
+    private void handleBye() {
+        syslog(1,8,"Invoked Bye");
+    }
+    private void handleShutdown() {
+        syslog(1,8, "Invoked Shutdown");
     }
     private boolean dataAvailable() {
         try {
