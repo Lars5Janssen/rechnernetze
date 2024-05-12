@@ -15,7 +15,7 @@ import org.apache.commons.lang3.StringUtils;
 public class ClientHandler implements Runnable {
   private String facility;
 
-  private Config config = new Config().readConfigFromFile("src/main/resources/main/config.json");
+  private Config config = new Config().readConfigFromFile("../resources/main/config.json");
   private final Socket socket;
   private ClientHandlerStreamConsumer clientHandlerStreamConsumer;
   private BlockingQueue<String> inputQueue;

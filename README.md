@@ -61,3 +61,12 @@ docker images
 # Ausgewähltes Image löschen
 docker rmi $IMAGE_ID
 ```
+### How to Run the jar
+Den Server starten
+```
+java -cp rechnernetze-1.0-SNAPSHOT.jar server.Server
+```
+Einen Client starten
+```
+java -cp rechnernetze-1.0-SNAPSHOT.jar client.Client2
+```

@@ -49,7 +49,7 @@ public class Config {
             JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
             return gson.fromJson(jsonObject, Config.class);
         } catch (IOException e) {
-            syslog(1,1,"File konnte nicht gelesen werden");
+            syslog(1,1,"File konnte nicht gelesen werden: " + e.getMessage());
             return null;
         }
     }
