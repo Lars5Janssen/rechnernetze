@@ -15,9 +15,7 @@ import static syslog.Syslog.syslog;
 public class Server {
   private String facility = "SERVER";
 
-  private Config config = new Config().readConfigFromFile("../resources/main/config.json"); // TODO change path
-
-  private Config config = new Config().readConfigFromFile("src/main/resources/main/config.json"); // TODO change path
+  private Config config = new Config().loadConfig();
   private ServerSocket serverSocket;
   private ExecutorService pool;
   private ArrayList<Thread> clientHandlers;

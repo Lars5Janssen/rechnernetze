@@ -10,7 +10,7 @@ import java.util.*;
 public class Client {
 
     private Socket clientSocket;
-    private Config config = new Config().readConfigFromFile("src/main/resources/main/config.json");
+    private Config config = new Config().loadConfig();
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
 

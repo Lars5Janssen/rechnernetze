@@ -14,7 +14,7 @@ public class Client2 {
     private Socket clientSocket;
     private BufferedReader bufferedReader;
     private BufferedWriter bufferedWriter;
-    private Config config = new Config().readConfigFromFile("../resources/main/config.json");
+    private Config config = new Config().loadConfig();
     private boolean flag = false;
 
     public Client2() {

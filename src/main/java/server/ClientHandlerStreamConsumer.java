@@ -13,7 +13,7 @@ import org.apache.commons.lang3.StringUtils;
 
 public class ClientHandlerStreamConsumer implements Runnable {
   private String facility;
-  private Config config = new Config().readConfigFromFile("../resources/main/config.json");
+  private Config config = new Config().loadConfig();
   private Socket socket;
   private DataInputStream dataIn;
   private BlockingQueue<String> inputQueue;

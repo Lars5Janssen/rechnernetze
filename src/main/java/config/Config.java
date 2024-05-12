@@ -4,9 +4,11 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.List;
 
 import static syslog.Syslog.syslog;
@@ -49,8 +51,21 @@ public class Config {
             JsonObject jsonObject = JsonParser.parseReader(reader).getAsJsonObject();
             return gson.fromJson(jsonObject, Config.class);
         } catch (IOException e) {
-            syslog(1,1,"File konnte nicht gelesen werden: " + e.getMessage());
+            syslog(1,1,"File could not be read: " + e.getMessage());
             return null;
         }
+    }
+
+    public Config loadConfig() {
+        ArrayList<String> paths = new ArrayList<>();
+        paths.add("../resources/main/config.json");
+        paths.add("src/main/resources/config.json");
+        for (String path : paths) {
+            File f = new File(path);
+            if (f.exists()) {
+                return readConfigFromFile(path);
+            }
+        }
+        return null;
     }
 }
