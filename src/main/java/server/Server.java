@@ -11,7 +11,7 @@ import static syslog.Syslog.syslog;
 
 public class Server {
 
-    private Config config = new Config().readConfigFromFile("src/main/resources/config.json"); // TODO change path
+    private Config config = new Config().readConfigFromFile("../../../resources/main/config.json"); // TODO change path
 
     private ServerSocket serverSocket;
 
@@ -25,7 +25,7 @@ public class Server {
     public void startServer() {
         try {
             while (true) {
-                pool.execute(new ClientHandler(serverSocket.accept()));
+                pool.execute(new ClientHandler(serverSocket.accept(), config));
             }
         } catch (IOException e) {
             syslog(1,4,"Connection zum Client konnte nicht hergestellt werden");

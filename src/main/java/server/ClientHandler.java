@@ -12,7 +12,7 @@ import static syslog.Syslog.syslog;
 
 public class ClientHandler implements Runnable {
 
-    private Config config = new Config().readConfigFromFile("src/main/resources/config.json");
+    private Config config = null;
     private final Socket socket;
 
     private byte[] streamBuffer = new byte[config.getPackageLength()];
@@ -20,8 +20,9 @@ public class ClientHandler implements Runnable {
     private DataInputStream dataIn;
     private DataOutputStream dataOut ;
 
-    ClientHandler(Socket socket) {
+    ClientHandler(Socket socket, Config config) {
         this.socket = socket;
+        this.config = config;
         try {
             this.dataIn = new DataInputStream(socket.getInputStream());
             this.dataOut = new DataOutputStream(socket.getOutputStream());
