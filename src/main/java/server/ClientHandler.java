@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 public class ClientHandler implements Runnable {
   private String facility;
@@ -73,7 +74,8 @@ public class ClientHandler implements Runnable {
       messageToClient("Der Server erwartet eine eingabe:\n");
 
       try {
-        userInput = inputQueue.take();
+        userInput = inputQueue.poll(1000, TimeUnit.MILLISECONDS);
+        if (userInput == null) {continue;}
         try {
           timeoutSemaphore.acquire();
         } catch (InterruptedException e) {
