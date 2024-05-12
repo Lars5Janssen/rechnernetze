@@ -11,18 +11,13 @@ import static syslog.Syslog.syslog;
 
 public class Server {
 
-  private Config config; // TODO change path
+  private Config config = new Config().readConfigFromFile("src/main/resources/config.json"); // TODO change path
 
   private ServerSocket serverSocket;
 
   private ExecutorService pool;
 
   public Server () throws IOException {
-    this.config = new Config().readConfigFromFile("src/main/resources/config.json");
-    if (this.config == null) {
-      syslog(1,4,"ERROR: Could not read config, revert to fallback filepath");
-      // TODO
-    }
     this.serverSocket = new ServerSocket(config.getPort());
     pool = Executors.newFixedThreadPool(config.getMaxClients()); // Hält nicht weitere Connection davon ab connectet zu werden.
   }
@@ -30,7 +25,7 @@ public class Server {
   public void startServer() {
     try {
       while (true) {
-        pool.execute(new ClientHandler(serverSocket.accept(), config));
+        pool.execute(new ClientHandler(serverSocket.accept()));
       }
     } catch (IOException e) {
       syslog(1,4,"Connection zum Client konnte nicht hergestellt werden");
