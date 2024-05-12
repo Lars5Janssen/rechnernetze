@@ -14,11 +14,10 @@ public class ClientHandler implements Runnable {
 
     private Config config = null;
     private final Socket socket;
-
     private byte[] streamBuffer = new byte[config.getPackageLength()];
     private StringBuilder userInputBuild;
     private DataInputStream dataIn;
-    private DataOutputStream dataOut ;
+    private DataOutputStream dataOut;
 
     ClientHandler(Socket socket, Config config) {
         this.socket = socket;
@@ -42,11 +41,12 @@ public class ClientHandler implements Runnable {
 
             String userInput = getUserInput();
 
-            validateCommand(streamBuffer);
-            String responseUtf8 = convertToUTF8(streamBuffer);
-            String response = handleCommand(responseUtf8);
+            if (validateCommand(userInput)) {
+                //String responseUtf8 = convertToUTF8(streamBuffer);
+                String response = handleCommand(userInput);
 
-            messageToClient(response);
+                messageToClient(userInput);
+            }
             // TODO needs to be in validation Method
         }
         try {
@@ -132,7 +132,10 @@ public class ClientHandler implements Runnable {
 
         return userInputBuild.toString();
     }
+    private boolean validateCommand(String command) {
 
+        return true;
+    }
     private boolean dataAvailable() {
         try {
             if (dataIn.available() > 0) {
@@ -145,14 +148,12 @@ public class ClientHandler implements Runnable {
             throw new RuntimeException(e);
         }
     }
-
     private boolean checkMaxPackageLength(int messageLength) {
         if (messageLength > config.getPackageLength()) {
             return false;
         }
         return true;
     }
-
     private void closeSocket() {
         try {
             socket.close();
@@ -161,7 +162,6 @@ public class ClientHandler implements Runnable {
             throw new RuntimeException(e);
         }
     }
-
     private String handleCommand(String command) { // TODO
         syslog(1,8, "Handling command: " + command);
         return command;
@@ -200,11 +200,6 @@ public class ClientHandler implements Runnable {
             messageToClient(command);
         }
     }
-
-    private String validateCommand(byte[] command) {
-        return null;
-    }
-
     private String convertToUTF8(byte[] arr) {
        return StringUtils.toEncodedString(arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 libary
     }
