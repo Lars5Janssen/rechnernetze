@@ -11,7 +11,7 @@ import static syslog.Syslog.syslog;
 
 public class Server {
 
-    private Config config = new Config().readConfigFromFile("src/main/resources/config.json");
+    private Config config = new Config().readConfigFromFile("src/main/resources/config.json"); // TODO change path
 
     private ServerSocket serverSocket;
 

@@ -16,6 +16,16 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter'
 }
 
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Main-Class': "praktikum_1/Server"
+    }
+    archiveBaseName = "${rootProject.name}"
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
 test {
     useJUnitPlatform()
 }
