@@ -45,13 +45,13 @@ public class Server {
     while (!serverSocket.isClosed()) {
         long sysTime = System.currentTimeMillis();
 
-        if (sysTime - timerOneSecond > 1000) {
+        /**if (sysTime - timerOneSecond > 1000) {
                 timerOneSecond = System.currentTimeMillis();
                 syslog(facility,8,String.valueOf(clientHandlers.size()));
                 for (Long l : clientHandlers) {
                 syslog(facility,8,String.valueOf(l));
                 }
-        }
+        }**/
 
 
       if (timeoutSemaphore.availablePermits() == 0) {

@@ -165,7 +165,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
           // TODO handle case
 
         } else { // everything is fine. the string is ok. Exit while loop
-          syslog(facility, 8, "The user input is valid.");
+          syslog(facility, 8, "The user input might be valid. Proceeding to validation.");
           break;
         }
       }
