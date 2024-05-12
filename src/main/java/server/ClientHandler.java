@@ -12,16 +12,15 @@ import static syslog.Syslog.syslog;
 
 public class ClientHandler implements Runnable {
 
-    private Config config = null;
+    private Config config = new Config().readConfigFromFile("src/main/resources/config.json");
     private final Socket socket;
     private byte[] streamBuffer = new byte[config.getPackageLength()];
     private StringBuilder userInputBuild;
     private DataInputStream dataIn;
     private DataOutputStream dataOut;
 
-    ClientHandler(Socket socket, Config config) {
+    ClientHandler(Socket socket) {
         this.socket = socket;
-        this.config = config;
         try {
             this.dataIn = new DataInputStream(socket.getInputStream());
             this.dataOut = new DataOutputStream(socket.getOutputStream());
@@ -201,7 +200,7 @@ public class ClientHandler implements Runnable {
         }
     }
     private String convertToUTF8(byte[] arr) {
-       return StringUtils.toEncodedString(arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 libary
+        return StringUtils.toEncodedString(arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 libary
     }
 
 
