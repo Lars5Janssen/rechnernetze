@@ -26,7 +26,7 @@ public class Client2 {
 
         } catch (IOException e) {
             closeEverything(clientSocket, bufferedReader, bufferedWriter);
-            System.out.println("Error creating client: " + e.getMessage());
+            syslog(1,1,"Client could not open data streams.");
         }
     }
 
@@ -45,7 +45,7 @@ public class Client2 {
             }
         } catch (Exception e) {
             closeEverything(clientSocket, bufferedReader, bufferedWriter);
-            System.out.println("Error Server not reachable. Closing.");
+            syslog(1,1,"ERROR Server not reachable. Closing.");
         }
     }
 
@@ -67,7 +67,7 @@ public class Client2 {
                         System.out.println(msgReceived);
                     } catch (IOException e) {
                         closeEverything(clientSocket, bufferedReader, bufferedWriter);
-                        System.out.println("Error listening messages: " + e.getMessage());
+                        syslog(1,8, "ERROR listening for messages: " + e.getMessage());
                     }
                 }
             }
@@ -91,7 +91,7 @@ public class Client2 {
                 bufferedWriter.close();
             }
         } catch (IOException e) {
-            System.out.println("Error closing client: " + e.getMessage());
+            syslog(1,8,"ERROR closing client.");
         }
     }
 
