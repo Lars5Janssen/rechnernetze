@@ -2,21 +2,18 @@ package server;
 
 import config.Config;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import static syslog.Syslog.syslog;
 
 public class Server {
   private String facility = "SERVER";
 
-  private Config config = new Config().readConfigFromFile("src/main/resources/main/config.json"); // TODO change path
+  private Config config = new Config().readConfigFromFile("../resources/main/config.json"); // TODO change path
 
   private ServerSocket serverSocket;
 
