@@ -36,9 +36,10 @@ public class Server {
             if (clientHandlers.size() >= 3) {
               syslog(facility,4,"Client tried to connect. Max connections reached. Connection refused");
               new Thread(new ClientHandler(acceptedSocket,"-1", true)).start();
+            } else {
+                clientHandlers.addLast(new Thread(new ClientHandler(acceptedSocket, String.valueOf(clientHandlers.size()), false)));
+                clientHandlers.getLast().start();
             }
-          clientHandlers.addLast(new Thread(new ClientHandler(acceptedSocket,String.valueOf(clientHandlers.size()),false)));
-          clientHandlers.getLast().start();
         } catch (IOException e) {
           syslog(facility,4,"Could not create client handler");
         }

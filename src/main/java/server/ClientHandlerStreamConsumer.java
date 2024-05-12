@@ -29,7 +29,6 @@ public class ClientHandlerStreamConsumer implements Runnable {
       this.dataIn = new DataInputStream(socket.getInputStream());
     } catch (IOException e) {
       syslog(this.facility, 1, "Could not establish intput stream");
-      throw new RuntimeException(e);
     }
     this.inputQueue = inputQueue;
   }

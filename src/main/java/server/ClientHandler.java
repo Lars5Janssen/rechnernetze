@@ -29,17 +29,18 @@ public class ClientHandler implements Runnable {
     this.socket = socket;
     try {
       this.dataOut = new DataOutputStream(socket.getOutputStream());
-      syslog(this.facility, 8, "Accepted new Client");
+      if (!instantClose) {syslog(this.facility, 8, "Accepted new Client");}
     } catch (IOException e) {
       syslog(this.facility, 1, "Could not establish output stream");
-      throw new RuntimeException(e);
+      closeSocket();
     }
-    this.inputQueue = new LinkedBlockingDeque<>(config.getMessageQueueLength());
-    clientHandlerStreamConsumer =
-        new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
-    thread = new Thread(clientHandlerStreamConsumer);
-    thread.start();
-
+    if (!instantClose) {
+      this.inputQueue = new LinkedBlockingDeque<>(config.getMessageQueueLength());
+      clientHandlerStreamConsumer =
+              new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
+      thread = new Thread(clientHandlerStreamConsumer);
+      thread.start();
+    }
     for (int i = 0;
         i < config.getCommands().size();
         i++) { // Initialize list of understood commands
@@ -64,7 +65,7 @@ public class ClientHandler implements Runnable {
         userInput = inputQueue.take();
       } catch (InterruptedException e) {
         syslog(facility, 1, "Was interrupted when taking out of input queue");
-        throw new RuntimeException(e);
+        closeSocket();
       }
 
       if (validateCommand(userInput)) {
@@ -79,11 +80,7 @@ public class ClientHandler implements Runnable {
         messageToClient("ERROR UNKNOWN COMMAND");
       }
     }
-    try {
-      socket.close();
-    } catch (IOException e) {
-      throw new RuntimeException(e);
-    }
+    closeSocket();
   }
 
   private boolean validateCommand(String message) {
@@ -122,7 +119,6 @@ public class ClientHandler implements Runnable {
 
   private void handleBye() {
     closeSocket();
-    thread.interrupt();
     Thread.currentThread().interrupt();
   }
 
@@ -139,12 +135,11 @@ public class ClientHandler implements Runnable {
 
   private void closeSocket() {
     try {
-      thread.interrupt();
+      if (thread != null) {thread.interrupt();}
       dataOut.close();
       socket.close();
     } catch (IOException e) {
       syslog(facility, 1, "Could not close socket");
-      throw new RuntimeException(e);
     }
   }
 
