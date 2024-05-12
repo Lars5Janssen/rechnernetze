@@ -8,6 +8,8 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.Semaphore;
+
 import org.apache.commons.lang3.StringUtils;
 
 public class ClientHandler implements Runnable {
@@ -21,20 +23,28 @@ public class ClientHandler implements Runnable {
   String userInput;
   private DataOutputStream dataOut;
   private String[] commands = new String[config.getCommands().size()];
-  private Boolean instantClose;
+  private String shutdownMessage;
+  private Semaphore timeoutSemaphore;
+  private Semaphore shutdownSemaphore;
 
-  ClientHandler(Socket socket, String facility, Boolean instantClose) {
-    this.instantClose = instantClose;
+  ClientHandler(Socket socket, String facility, Semaphore timeoutSemaphore, Semaphore shutdownSemaphore, String shutdownMessage) {
+    this.shutdownMessage = shutdownMessage;
     this.facility = "CH" + facility;
     this.socket = socket;
     try {
       this.dataOut = new DataOutputStream(socket.getOutputStream());
-      if (!instantClose) {syslog(this.facility, 8, "Accepted new Client");}
+      if (shutdownMessage.equals("")) {
+        syslog(this.facility, 8, "Accepted new Client");
+      }
     } catch (IOException e) {
       syslog(this.facility, 1, "Could not establish output stream");
       closeSocket();
     }
-    if (!instantClose) {
+
+    this.timeoutSemaphore = timeoutSemaphore;
+    this.shutdownSemaphore = shutdownSemaphore;
+
+    if (shutdownMessage.equals("")) {
       this.inputQueue = new LinkedBlockingDeque<>(config.getMessageQueueLength());
       clientHandlerStreamConsumer =
               new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
@@ -42,8 +52,8 @@ public class ClientHandler implements Runnable {
       thread.start();
     }
     for (int i = 0;
-        i < config.getCommands().size();
-        i++) { // Initialize list of understood commands
+         i < config.getCommands().size();
+         i++) { // Initialize list of understood commands
       commands[i] = config.getCommands().get(i).split(" ")[0];
     }
   }
@@ -51,8 +61,8 @@ public class ClientHandler implements Runnable {
   @Override
   public void run() {
 
-    if (instantClose) {
-      messageToClient("Exeeded max number of allowed clients. closing connection.");
+    if (!shutdownMessage.equals("")) {
+      messageToClient(shutdownMessage);
       handleBye();
     }
 
@@ -63,6 +73,11 @@ public class ClientHandler implements Runnable {
 
       try {
         userInput = inputQueue.take();
+        try {
+          timeoutSemaphore.acquire();
+        } catch (InterruptedException e) {
+          syslog(facility,2,"timeoutSemaphore acquire was interrupted");
+        }
       } catch (InterruptedException e) {
         syslog(facility, 1, "Was interrupted when taking out of input queue");
         closeSocket();
@@ -85,11 +100,9 @@ public class ClientHandler implements Runnable {
 
   private boolean validateCommand(String message) {
     for (String command : commands) {
-      if (message.indexOf(command)
-          == 0) { // message.strip().inde[...] to remove trailing and leading white spaces
+      if (message.indexOf(command) == 0) { // message.strip().inde[...] to remove trailing and leading white spaces
         if (command.equals("BYE") && message.length() == 4) return true;
-        else if (command.equals("SHUTDOWN") && message.length() == 9) return true;
-        else if (command.equals("BYE") || command.equals("SHUTDOWN")) return false;
+        else if (command.equals("BYE")) return false;
 
         if (message.indexOf(" ") == command.length()) return true;
       }
@@ -99,7 +112,8 @@ public class ClientHandler implements Runnable {
 
   private String handleMessage(String message) {
     syslog(facility, 8, "Handling message: " + message);
-    String[] messageSplit = message.split(" ", 2);
+
+      String[] messageSplit = message.split(" ", 2);
     String command = messageSplit[0].replace("\n", "");
     return switch (command) {
       case "LOWERCASE" -> messageSplit[1].toLowerCase();
@@ -110,8 +124,18 @@ public class ClientHandler implements Runnable {
         yield command;
       }
       case "SHUTDOWN" -> {
-        handleShutdown();
-        yield command;
+        if (messageSplit[1].replaceAll("\n","").equals(config.getPassword())) {
+          messageToClient("Initializing shutdown");
+          try {
+              shutdownSemaphore.acquire();
+          } catch (InterruptedException e) {
+            syslog(facility,2,"shutdownSemaphore acquire was interrupted");
+          }
+          handleBye();
+          yield command;
+        } else {
+          yield "Wrong Password";
+        }
       }
       default -> null;
     };
@@ -126,25 +150,16 @@ public class ClientHandler implements Runnable {
     syslog(facility, 8, "Invoked Shutdown");
   }
 
-  private boolean checkMaxPackageLength(int messageLength) {
-    if (messageLength > config.getPackageLength()) {
-      return false;
-    }
-    return true;
-  }
-
   private void closeSocket() {
     try {
-      if (thread != null) {thread.interrupt();}
+      if (thread != null) {
+        thread.interrupt();
+      }
       dataOut.close();
       socket.close();
     } catch (IOException e) {
       syslog(facility, 1, "Could not close socket");
     }
-  }
-
-  private Boolean completedMessage() {
-    return true;
   }
 
   public void messageToClient(String message) {
@@ -161,10 +176,5 @@ public class ClientHandler implements Runnable {
     for (String command : config.getCommands()) {
       messageToClient(command);
     }
-  }
-
-  private String convertToUTF8(byte[] arr) {
-    return StringUtils.toEncodedString(
-        arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 libary
   }
 }
