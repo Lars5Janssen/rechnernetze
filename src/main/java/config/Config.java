@@ -22,6 +22,7 @@ public class Config {
     private String welcomeMSG;
     private boolean logMessages;
     private int packageLength;
+    private int messageQueueLength;
 
     public String getPassword() {
         return password;
@@ -38,6 +39,9 @@ public class Config {
     public int getPackageLength() {return packageLength;}
     public List<String> getCommands() {return commands;}
     public String getWelcomeMSG() {return welcomeMSG;}
+    public int getMessageQueueLength() {
+        return messageQueueLength;
+    }
 
     public Config readConfigFromFile(String fileName) {
         try (Reader reader = new FileReader(fileName)) {

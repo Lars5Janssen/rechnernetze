@@ -2,6 +2,7 @@
   "password": "H",
   "maxClients": 1,
   "port": 4242,
+  "messageQueueLength": 10,
   "timeToShutdown": 30,
   "disconnectMSG": "No more Clients allowed.",
   "packageLength": 255,
