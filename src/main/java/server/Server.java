@@ -7,6 +7,9 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
 
@@ -14,11 +17,11 @@ import static syslog.Syslog.syslog;
 
 public class Server {
   private String facility = "SERVER";
-
   private Config config = new Config().loadConfig();
   private ServerSocket serverSocket;
   private ExecutorService pool;
-  private ArrayList<Thread> clientHandlers;
+  private List<Long> clientHandlers;
+  private ArrayList<Thread> threadList = new ArrayList<>();
   private Semaphore timeoutSemaphore = new Semaphore(1);
   private Semaphore shutdownSemaphore = new Semaphore(1);
   private Boolean shutdownFlag = false;
@@ -26,7 +29,7 @@ public class Server {
 
   public Server () throws IOException {
     this.serverSocket = new ServerSocket(config.getPort());
-    this.clientHandlers = new ArrayList<>();
+    this.clientHandlers = Collections.synchronizedList(new ArrayList<>());
   }
 
   private void startServer() {
@@ -37,10 +40,21 @@ public class Server {
 
     long lastMsgTime = System.currentTimeMillis();
     long shutdownMsgTime = System.currentTimeMillis();
+    long timerOneSecond = System.currentTimeMillis();
 
     while (!serverSocket.isClosed()) {
         long sysTime = System.currentTimeMillis();
-        if (timeoutSemaphore.availablePermits() == 0) {
+
+        if (sysTime - timerOneSecond > 1000) {
+                timerOneSecond = System.currentTimeMillis();
+                syslog(facility,8,String.valueOf(clientHandlers.size()));
+                for (Long l : clientHandlers) {
+                syslog(facility,8,String.valueOf(l));
+                }
+        }
+
+
+      if (timeoutSemaphore.availablePermits() == 0) {
             timeoutSemaphore.release();
             lastMsgTime = sysTime;
         }
@@ -87,6 +101,7 @@ public class Server {
 
         @Override
         public void run() {
+            int clientHandlerCount = 0;
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     Socket acceptedSocket = serverSocket.accept();
@@ -100,19 +115,21 @@ public class Server {
                             syslog(facility,4,"Client tried to connect. Max connections reached. Connection refused");
                             shutdownMessage = "Exceeded max number of allowed clients. closing connection.";
                         }
-                        new Thread(new ClientHandler(acceptedSocket,"-1",timeoutSemaphore,shutdownSemaphore, shutdownMessage)).start();
+                        Thread tempThread = new Thread(new ClientHandler(acceptedSocket,"-1",timeoutSemaphore,shutdownSemaphore, clientHandlers, shutdownMessage));
+                        tempThread.start();
+                        tempThread.interrupt();
                     } else {
-                        clientHandlers.addLast(new Thread(new ClientHandler(acceptedSocket, String.valueOf(clientHandlers.size()), timeoutSemaphore,shutdownSemaphore,shutdownMessage)));
-                        clientHandlers.getLast().start();
+                        Thread cHThread = new Thread(new ClientHandler(acceptedSocket, String.valueOf(clientHandlerCount), timeoutSemaphore,shutdownSemaphore,clientHandlers,shutdownMessage));
+                        threadList.addLast(cHThread);
+                        threadList.getLast().start();
+                        clientHandlerCount++;
                     }
                 } catch (IOException e) {
                     syslog(facility,4,"Could not create client handler");
                 }
             }
-            if (Thread.currentThread().isInterrupted()) {
-                for (Thread clienthandler : clientHandlers) {
-                    clienthandler.interrupt();
-                }
+            for (Thread t : threadList) {
+                t.interrupt();
             }
         }
     }

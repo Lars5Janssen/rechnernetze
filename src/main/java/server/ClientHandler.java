@@ -5,12 +5,10 @@ import static syslog.Syslog.syslog;
 import config.Config;
 import java.io.*;
 import java.net.Socket;
-import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.Semaphore;
-
-import org.apache.commons.lang3.StringUtils;
 
 public class ClientHandler implements Runnable {
   private String facility;
@@ -19,18 +17,20 @@ public class ClientHandler implements Runnable {
   private final Socket socket;
   private ClientHandlerStreamConsumer clientHandlerStreamConsumer;
   private BlockingQueue<String> inputQueue;
-  private Thread thread;
+  private Thread helperThread;
   String userInput;
   private DataOutputStream dataOut;
   private String[] commands = new String[config.getCommands().size()];
   private String shutdownMessage;
   private Semaphore timeoutSemaphore;
   private Semaphore shutdownSemaphore;
+  private List<Long> threadList;
 
-  ClientHandler(Socket socket, String facility, Semaphore timeoutSemaphore, Semaphore shutdownSemaphore, String shutdownMessage) {
+  ClientHandler(Socket socket, String facility, Semaphore timeoutSemaphore, Semaphore shutdownSemaphore, List<Long> threadList, String shutdownMessage) {
     this.shutdownMessage = shutdownMessage;
     this.facility = "CH" + facility;
     this.socket = socket;
+    this.threadList = threadList;
     try {
       this.dataOut = new DataOutputStream(socket.getOutputStream());
       if (shutdownMessage.equals("")) {
@@ -48,8 +48,8 @@ public class ClientHandler implements Runnable {
       this.inputQueue = new LinkedBlockingDeque<>(config.getMessageQueueLength());
       clientHandlerStreamConsumer =
               new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
-      thread = new Thread(clientHandlerStreamConsumer);
-      thread.start();
+      helperThread = new Thread(clientHandlerStreamConsumer);
+      helperThread.start();
     }
     for (int i = 0;
          i < config.getCommands().size();
@@ -60,13 +60,14 @@ public class ClientHandler implements Runnable {
 
   @Override
   public void run() {
+    threadList.add(Thread.currentThread().threadId());
 
     if (!shutdownMessage.equals("")) {
       messageToClient(shutdownMessage);
       handleBye();
     }
 
-    while (!socket.isClosed() && thread.isAlive() && !Thread.currentThread().isInterrupted()) {
+    while (!socket.isClosed() && helperThread.isAlive() && !Thread.currentThread().isInterrupted()) {
 
       // welcomeClient();
       messageToClient("Der Server erwartet eine eingabe:\n");
@@ -152,11 +153,14 @@ public class ClientHandler implements Runnable {
 
   private void closeSocket() {
     try {
-      if (thread != null) {
-        thread.interrupt();
+      if (helperThread != null) {
+        helperThread.interrupt();
       }
       dataOut.close();
       socket.close();
+      syslog(facility,1,String.valueOf(Thread.currentThread().threadId()));
+      threadList.remove(Thread.currentThread().threadId());
+      Thread.currentThread().interrupt();
     } catch (IOException e) {
       syslog(facility, 1, "Could not close socket");
     }
