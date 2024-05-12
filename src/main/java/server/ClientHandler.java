@@ -41,10 +41,9 @@ public class ClientHandler implements Runnable {
             String userInput = getUserInput();
 
             if (validateCommand(userInput)) {
-                //String responseUtf8 = convertToUTF8(streamBuffer);
                 String response = handleCommand(userInput);
 
-                messageToClient(userInput);
+                messageToClient(response);
             }
             // TODO needs to be in validation Method
         }
@@ -108,7 +107,7 @@ public class ClientHandler implements Runnable {
             int stringLengthFromZero = userInputBuild.length() - 1;
 
             syslog(1,8,String.format(
-                    "\nFirst NL: %s\nLast NL: %s\nLength (from 0): %s\nString: \n\"\"\"%s\"\"\"\n",
+                    "\nFirst NL: %s\nLast NL: %s\nLength (from 0): %s\nString: \n========================================\n%s\n========================================\n",
                     newLineIndex, lastNewLineIndex, stringLengthFromZero, userInputBuild));
 
             // Exit condition and newline conformity checks
@@ -134,6 +133,10 @@ public class ClientHandler implements Runnable {
     private boolean validateCommand(String command) {
 
         return true;
+    }
+    private String handleCommand(String command) { // TODO
+        syslog(1,8, "Handling command: " + command);
+        return command;
     }
     private boolean dataAvailable() {
         try {
@@ -161,11 +164,6 @@ public class ClientHandler implements Runnable {
             throw new RuntimeException(e);
         }
     }
-    private String handleCommand(String command) { // TODO
-        syslog(1,8, "Handling command: " + command);
-        return command;
-    }
-
     private Boolean completedMessage() {
         return true;
     }
