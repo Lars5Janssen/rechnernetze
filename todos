@@ -1,0 +1,8 @@
+\r = jede Nachricht die das enthält soll verworfen werden
+\n = alles was danach kommt, kommt in den Puffer und wird danach verarbeitet.
+
+Es soll keine "Server erwartet eingabe message" stattfinden. -> Done
+
+OK BYE kommt bei dem Client nicht an nach dem BYE Befehl.
+
+Das perlscript läuft nur bis test 04
