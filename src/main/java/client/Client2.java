@@ -97,7 +97,7 @@ public class Client2 {
 
     private void buildClientSocket() {
         try {
-            this.clientSocket = new Socket("localhost", 4242);
+            this.clientSocket = new Socket("localhost", config.getPort());
         } catch (IOException e) {
             syslog(1,8,"Error could not build clientSocket." + e.getMessage());
         }

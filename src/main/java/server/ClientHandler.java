@@ -68,11 +68,7 @@ public class ClientHandler implements Runnable {
       handleBye();
     }
 
-    messageToClient("Der Server erwartet eine eingabe:\n");
     while (!socket.isClosed() && helperThread.isAlive() && !Thread.currentThread().isInterrupted()) {
-
-      // welcomeClient();
-      if (userInput != null) {messageToClient("Der Server erwartet eine eingabe:\n");}
 
       try {
         userInput = inputQueue.poll(1000, TimeUnit.MILLISECONDS);
