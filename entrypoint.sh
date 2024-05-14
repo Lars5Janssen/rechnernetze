@@ -1,3 +1,7 @@
 #!/bin/bash
 service ssh start
-java -cp /build/libs/rechnernetze-1.0-SNAPSHOT.jar server.Server
+rm -rf /rechnernetze
+git clone https://github.com/Lars5Janssen/rechnernetze.git /rechnernetze
+cd rechnernetze
+gradle fatJar
+tail -f /dev/null
