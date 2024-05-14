@@ -1,7 +1,8 @@
 #!/bin/bash
 service ssh start
 rm -rf /rechnernetze
-git clone https://github.com/Lars5Janssen/rechnernetze.git /rechnernetze
-cd rechnernetze
-gradle --daemon fatJar
-tail -f /dev/null
+git clone -b redesign_praktikum1 https://github.com/Lars5Janssen/rechnernetze.git /rechnernetze
+cd /rechnernetze
+./gradlew fatJar
+cd /rechnernetze/build/libs
+java -cp rechnernetze-1.0-SNAPSHOT.jar server.Server
