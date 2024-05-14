@@ -39,7 +39,7 @@ RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid
 ENV NOTVISIBLE='in users profile'
 RUN echo 'export VISIBLE=now' >> /etc/profile
 
-COPY /home/padawan/.ssh/authorized_keys /root/.ssh/authorized_keys
+COPY .ssh/authorized_keys /root/.ssh/authorized_keys
 RUN chmod 0400 /root/.ssh/authorized_keys
 
 # Add welcome message
