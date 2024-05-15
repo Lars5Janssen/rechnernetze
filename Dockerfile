@@ -28,16 +28,16 @@ RUN apt-get update && apt-get install -y \
 RUN ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN dpkg-reconfigure --frontend noninteractive tzdata
 
-# Setup ssh
-RUN mkdir /var/run/sshd
+# Setup ssh --> i dont think we need ssh
+#RUN mkdir /var/run/sshd
 # allow root login with key pair
-RUN sed -i 's/#Port 22/Port 222/' /etc/ssh/sshd_config
+#RUN sed -i 's/#Port 22/Port 222/' /etc/ssh/sshd_config
 # allow root login with key pair
-RUN sed -i 's/#PermitRootLogin.*/PermitRootLogin\ prohibit-password/' /etc/ssh/sshd_config
+#RUN sed -i 's/#PermitRootLogin.*/PermitRootLogin\ prohibit-password/' /etc/ssh/sshd_config
 # SSH login fix. Otherwise user is kicked off after login
-RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
-ENV NOTVISIBLE='in users profile'
-RUN echo 'export VISIBLE=now' >> /etc/profile
+#RUN sed -i 's@session\s*required\s*pam_loginuid.so@session optional pam_loginuid.so@g' /etc/pam.d/sshd
+#ENV NOTVISIBLE='in users profile'
+#RUN echo 'export VISIBLE=now' >> /etc/profile
 
 COPY entrypoint.sh entrypoint.sh
 COPY ./authorized_keys /root/.ssh/authorized_keys
