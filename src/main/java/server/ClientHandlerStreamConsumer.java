@@ -28,7 +28,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
     try {
       this.dataIn = new DataInputStream(socket.getInputStream());
     } catch (IOException e) {
-      syslog(this.facility, 1, "Could not establish intput stream");
+      syslog(this.facility, 1, "Could not establish input stream");
     }
     this.inputQueue = inputQueue;
   }
@@ -75,12 +75,11 @@ public class ClientHandlerStreamConsumer implements Runnable {
     // messageToClient("Nachricht ist laenger als 255 Zeichen!");
     dataIn.skip(dataIn.available());
     userInputBuild = new StringBuilder();
-    streamBuffer = new byte[255];
+    streamBuffer = new byte[config.getPackageLength()];
   }
 
   private String getUserInput() {
     userInputBuild = new StringBuilder();
-    byte[] streamBuffer;
     int messageLength = 0;
 
     // Break when one command found
@@ -96,24 +95,25 @@ public class ClientHandlerStreamConsumer implements Runnable {
         errorFlag = true;
       }
 
-      if (checkMaxPackageLength(messageLength)) {
+      if (checkMaxPackageLength(messageLength)) { // TODO wenn wie länge erreicht ist können wir doch direkt den Error zurückgeben oder nicht?
         try {
           streamBuffer =
               Arrays.copyOfRange(
                   streamBuffer, 0, messageLength); // cut array to the actual message length
+          System.out.println("StreamBuffer: " + Arrays.toString(streamBuffer));
         } catch (IllegalArgumentException e) {
-          if (socket.isClosed()) {syslog(facility, 1, "messageLength not set, could not read from dataIn");}
+          if (socket.isClosed()) {syslog(facility, 1, "messageLength not set, could not read from dataIn");} // Wieso der Socket closed?
           errorFlag = true;
           return null;
         }
       }
-      ;
 
       // Check if there are more bytes
       // if there are, there were more than max packageLength of bytes.\
       // and everything needs to be discarded.
+      // TODO vllt in eine Methode und direkt unter zeile 97?
       // TODO (Or a new package has arrived right between dataIn.read (above) and now.)
-      try {
+      try { // TODO
         if (dataIn.available() > 0) {
           syslog(facility, 4, "More data is available than expected");
           // TODO handle case / reset everything (handleMessageOverSizeLimit() )
@@ -123,11 +123,14 @@ public class ClientHandlerStreamConsumer implements Runnable {
         if (!Thread.currentThread().isInterrupted()) {syslog(facility, 1, "Could not get remaining length from dataIn");}
       }
 
+      System.out.println("Stream buffer in UTF: " + convertToUTF8(streamBuffer));
       // Append the byteArray of correct length to the stringBuilder
       userInputBuild.append(convertToUTF8(streamBuffer));
 
       // Check if the stringBuilder has exceeded the maximum package size,
       // if so, the command is invalid and everything needs to be discarded.
+      // TODO Die package length und ob alle verbindungen geschlossen werden müssen wird doch schon
+      // TODO mit checkMessageLength überprüft. Wieso hier nochmal?
       if (userInputBuild.toString().getBytes(StandardCharsets.UTF_8).length
           > config.getPackageLength()) { // TODO refactor 255 magic number
         syslog(facility, 4, "User input has exceeded maximum length");
@@ -138,6 +141,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
       int newLineIndex = userInputBuild.indexOf("\n");
       int lastNewLineIndex = userInputBuild.lastIndexOf("\n");
       int stringLengthFromZero = userInputBuild.length() - 1;
+      // TODO wenn ein \r enthalten ist dann soll ein Error zurückgegeben werden.
 
       if (!Thread.currentThread().isInterrupted()) {syslog(
           facility,
@@ -149,7 +153,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
                   + "Length (from 0): %s\n"
                   + "String: \n"
                   + "========================================\n"
-                  + "%s\n"
+                  + "%s"
                   + "========================================\n",
               newLineIndex, lastNewLineIndex, stringLengthFromZero, userInputBuild));}
 
@@ -159,11 +163,12 @@ public class ClientHandlerStreamConsumer implements Runnable {
         if (newLineIndex != lastNewLineIndex) { // We have more than one newline
           syslog(facility, 4, "More than one newline found");
           // TODO handle case
+          // Aufsplitten des Strings in vor \n und nach \n
 
         } else if (lastNewLineIndex != stringLengthFromZero) { // The one newline is not at the end
           syslog(facility, 4, "Newline is not at the end of the input");
           // TODO handle case
-
+          // Kein newline bedeutet glaube ich keine weiterverarbeitung
         } else { // everything is fine. the string is ok. Exit while loop
           syslog(facility, 8, "The user input might be valid. Proceeding to validation.");
           break;

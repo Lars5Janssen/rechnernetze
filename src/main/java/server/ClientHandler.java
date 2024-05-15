@@ -5,6 +5,7 @@ import static syslog.Syslog.syslog;
 import config.Config;
 import java.io.*;
 import java.net.Socket;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -14,15 +15,15 @@ import java.util.concurrent.TimeUnit;
 public class ClientHandler implements Runnable {
   private String facility;
 
-  private Config config = new Config().loadConfig();
+  private final Config config = new Config().loadConfig();
   private final Socket socket;
   private ClientHandlerStreamConsumer clientHandlerStreamConsumer;
   private BlockingQueue<String> inputQueue;
   private Thread helperThread;
   String userInput;
   private DataOutputStream dataOut;
-  private String[] commands = new String[config.getCommands().size()];
-  private String shutdownMessage;
+  private final String[] commands = new String[config.getCommands().size()];
+  private final String shutdownMessage;
   private Semaphore timeoutSemaphore;
   private Semaphore shutdownSemaphore;
   private List<Long> threadList;
@@ -47,8 +48,7 @@ public class ClientHandler implements Runnable {
 
     if (shutdownMessage.equals("")) {
       this.inputQueue = new LinkedBlockingDeque<>(config.getMessageQueueLength());
-      clientHandlerStreamConsumer =
-              new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
+      clientHandlerStreamConsumer = new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
       helperThread = new Thread(clientHandlerStreamConsumer);
       helperThread.start();
     }
@@ -85,6 +85,7 @@ public class ClientHandler implements Runnable {
 
       if (validateCommand(userInput)) {
         String response = handleMessage(userInput);
+        System.out.println("Response: " + response);
         if (response == null) {
           messageToClient("ERROR while handling message");
           continue;
@@ -110,11 +111,15 @@ public class ClientHandler implements Runnable {
     return false;
   }
 
+  // TODO Hier muss aufjedenfall dafür gesorgt werden das die Nachricht bei dem
+  // TODO \n getrennt wird und in die Queue kommt. alternativ geht das natürlich auch direkt im ClientHandlerStreamComsumer
+  // TODO bei \r soll die nachricht nicht akzeptiert werden und ein Error zurückkommen.
   private String handleMessage(String message) {
     syslog(facility, 8, "Handling message: " + message);
 
-      String[] messageSplit = message.split(" ", 2);
+    String[] messageSplit = message.split(" ", 2);
     String command = messageSplit[0].replace("\n", "");
+    System.out.println("Before: " + Arrays.toString(messageSplit));
     return switch (command) {
       case "LOWERCASE" -> messageSplit[1].toLowerCase();
       case "UPPERCASE" -> messageSplit[1].toUpperCase();
@@ -166,9 +171,9 @@ public class ClientHandler implements Runnable {
   }
 
   public void messageToClient(String message) {
-    syslog(facility, 8, "Sending message to client: " + message + "\n");
+    syslog(facility, 8, "Sending message to client: " + message);
     try {
-      dataOut.writeBytes(message + "\n");
+      dataOut.writeUTF(message);
     } catch (IOException e) {
       syslog(facility, 1, "Could not message client");
     }
