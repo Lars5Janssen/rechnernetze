@@ -6,3 +6,34 @@ Es soll keine "Server erwartet eingabe message" stattfinden. -> Done
 OK BYE kommt bei dem Client nicht an nach dem BYE Befehl.
 
 Das perlscript läuft nur bis test 04
+
+Possible Inputs:
+REVERSE BLABLAB\nDIESdsa\njdslfbkjresa
+Input1 = REVERSE BLABLAB\n
+Input2 = DIESdsa\n
+Input3 = jdslfbkjresa
+
+REVERSE BLABLAB\nDIESdsa\njdslfbkjresa[.....255]
+------------
+incomming 345 --> x
+incomming 100 --> x
+------------
+StringBuilder
+
+while {
+    max 256 Bytes vom inputStream <-- Read
+    if(256 ist belegt) { <-- Check 01
+        ERROR
+    }
+    --> in den StringBuilder
+    if (bigger 255 or has '\r') { <-- Check 02
+       discard everything and return error to client <-- Output
+
+    } else if (StringBuilder has \n) { <-- Check 03
+        split at '\n'
+        add each split to Queue <-- Return
+
+        discard everything after last \n
+        return one error to client for discarded input <-- Output
+    }
+}

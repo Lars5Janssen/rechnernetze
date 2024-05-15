@@ -35,7 +35,8 @@ public class ClientHandlerStreamConsumer implements Runnable {
   @Override
   public void run() {
     while (!socket.isClosed() && !errorFlag && !Thread.currentThread().isInterrupted()) {
-      String userInput = getUserInput();
+      getUserInput();
+      /**String userInput = getUserInput(); // The point of view
       if (userInput == null) {
         if (socket.isClosed()) {
           syslog(facility, 1, "Error while reading input");
@@ -45,11 +46,11 @@ public class ClientHandlerStreamConsumer implements Runnable {
       if (!inputQueue.add(userInput)) {
         syslog(
             facility,
-            4,
+            1,
             String.format(
                 "Error in adding to queue. Might have more then %s Messages",
                 config.getMessageQueueLength()));
-      }
+      }**/
     }
     try {
       dataIn.close();
@@ -76,7 +77,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
     byte[] streamBuffer = new byte[config.getPackageLength()];
   }
 
-  private String getUserInput() {
+  private void getUserInput() {
     userInputBuild = new StringBuilder();
     byte[] streamBuffer;
     int messageLength = 0;
@@ -85,7 +86,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
     while (!socket.isClosed() && !errorFlag && !Thread.currentThread().isInterrupted()) {
       // Get set length of bytes from input stream (length set in config)
       // and transfer them to stringBuilder, while cutting null bytes added by dataIn.read
-      streamBuffer = new byte[config.getPackageLength()];
+      streamBuffer = new byte[config.getPackageLength()+1];
 
       try {
         messageLength = dataIn.read(streamBuffer, 0, streamBuffer.length);
@@ -96,7 +97,41 @@ public class ClientHandlerStreamConsumer implements Runnable {
         errorFlag = true;
       }
 
-      if (checkMaxPackageLength(messageLength)) { // TODO wenn wie länge erreicht ist können wir doch direkt den Error zurückgeben oder nicht?
+      if (messageLength>config.getPackageLength()) {
+        syslog(facility,1,"TESTING ERROR");
+        // TODO ERROR
+      }
+
+      userInputBuild.append(convertToUTF8(Arrays.copyOfRange(streamBuffer, 0, messageLength)));
+
+      if (userInputBuild.length() > config.getPackageLength() || userInputBuild.indexOf("\r") != -1)  {
+        syslog(facility,1,"TESTING ERROR");
+        // TODO discard everything and error to client
+
+      } else if (userInputBuild.indexOf("\n") != -1) {
+          while (userInputBuild.indexOf("\n") != -1) {
+            int nLIndex = userInputBuild.indexOf("\n");
+            String substring = userInputBuild.substring(0,nLIndex);
+            //syslog(facility,8,String.format("nLIndex: %s\nSubstring:\n%s\nString:\n%s\n",nLIndex,substring,userInputBuild.toString()));
+
+            inputQueue.add(substring); // TODO .add() is boolean and can return false
+            syslog(facility,8,Arrays.toString(inputQueue.toArray()));
+            userInputBuild.delete(0,nLIndex+1);
+          }
+          if (!userInputBuild.isEmpty()) {
+            syslog(facility,1,"TESTING ERROR");
+            // TODO return error for rest of string
+          }
+      }
+
+
+
+
+
+
+
+
+      /**if (checkMaxPackageLength(messageLength)) {
         try {
           streamBuffer =
               Arrays.copyOfRange(
@@ -179,9 +214,9 @@ public class ClientHandlerStreamConsumer implements Runnable {
           syslog(facility, 8, "The user input might be valid. Proceeding to validation.");
           break;
         }
-      }
+      }**/
     }
 
-    return userInputBuild.toString();
+    //return userInputBuild.toString();
   }
 }

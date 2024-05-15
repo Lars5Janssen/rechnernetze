@@ -51,7 +51,7 @@ public class ClientHandler implements Runnable {
     this.shutdownSemaphore = shutdownSemaphore;
 
     if (shutdownMessage.isEmpty()) {
-      this.inputQueue = new LinkedBlockingDeque<>(config.getMessageQueueLength());
+      this.inputQueue = new LinkedBlockingDeque<>(config.getPackageLength()); // config.getMessageQueueLength();
       ClientHandlerStreamConsumer clientHandlerStreamConsumer =
           new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
       helperThread = new Thread(clientHandlerStreamConsumer);
@@ -75,13 +75,15 @@ public class ClientHandler implements Runnable {
 
     while (!socket.isClosed()
         && helperThread.isAlive()
+        && !helperThread.isInterrupted()
         && !Thread.currentThread().isInterrupted()) {
 
       try {
-        userInput = inputQueue.poll(1000, TimeUnit.MILLISECONDS);
+        userInput = inputQueue.poll(1000, TimeUnit.MILLISECONDS); // !! THE MAGIC
         if (userInput == null) {
           continue;
         }
+        syslog(facility,8,userInput);
         try {
           timeoutSemaphore.acquire();
         } catch (InterruptedException e) {
@@ -112,8 +114,7 @@ public class ClientHandler implements Runnable {
     for (String command : commands) {
       if (message.indexOf(command)
           == 0) { // message.strip().inde[...] to remove trailing and leading white spaces
-        if (command.equals("BYE") && message.length() == 4) return true;
-        else if (command.equals("BYE")) return false;
+        if (command.equals("BYE")) return true;
 
         if (message.indexOf(" ") == command.length()) return true;
       }
@@ -128,8 +129,7 @@ public class ClientHandler implements Runnable {
     syslog(facility, 8, "Handling message: " + message);
 
     String[] messageSplit = message.split(" ", 2);
-    String command = messageSplit[0].replace("\n", "");
-    System.out.println("Before: " + Arrays.toString(messageSplit));
+    String command = messageSplit[0];
     return switch (command) {
       case "LOWERCASE" -> messageSplit[1].toLowerCase();
       case "UPPERCASE" -> messageSplit[1].toUpperCase();
