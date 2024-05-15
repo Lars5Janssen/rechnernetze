@@ -19,7 +19,7 @@ dependencies {
 
 task fatJar(type: Jar) {
     manifest {
-        attributes 'Main-Class': "praktikum_1/Server"
+        attributes 'Main-Class': "server.Server"
     }
     archiveBaseName = "${rootProject.name}"
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

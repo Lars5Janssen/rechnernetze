@@ -73,7 +73,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
     // messageToClient("Nachricht ist laenger als 255 Zeichen!");
     dataIn.skip(dataIn.available());
     userInputBuild = new StringBuilder();
-    byte[] streamBuffer = new byte[255];
+    byte[] streamBuffer = new byte[config.getPackageLength()];
   }
 
   private String getUserInput() {
@@ -96,7 +96,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
         errorFlag = true;
       }
 
-      if (checkMaxPackageLength(messageLength)) {
+      if (checkMaxPackageLength(messageLength)) { // TODO wenn wie länge erreicht ist können wir doch direkt den Error zurückgeben oder nicht?
         try {
           streamBuffer =
               Arrays.copyOfRange(
@@ -114,6 +114,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
       // Check if there are more bytes
       // if there are, there were more than max packageLength of bytes.\
       // and everything needs to be discarded.
+      // TODO vllt in eine Methode und direkt unter zeile 99?
       // TODO (Or a new package has arrived right between dataIn.read (above) and now.)
       try {
         if (dataIn.available() > 0) {
@@ -127,11 +128,14 @@ public class ClientHandlerStreamConsumer implements Runnable {
         }
       }
 
+      System.out.println("Stream buffer in UTF: " + convertToUTF8(streamBuffer));
       // Append the byteArray of correct length to the stringBuilder
       userInputBuild.append(convertToUTF8(streamBuffer));
 
       // Check if the stringBuilder has exceeded the maximum package size,
       // if so, the command is invalid and everything needs to be discarded.
+      // TODO Die package length und ob alle verbindungen geschlossen werden müssen wird doch schon
+      // TODO mit checkMessageLength überprüft. Wieso hier nochmal?
       if (userInputBuild.toString().getBytes(StandardCharsets.UTF_8).length
           > config.getPackageLength()) { // TODO refactor 255 magic number
         syslog(facility, 4, "User input has exceeded maximum length");
@@ -142,24 +146,21 @@ public class ClientHandlerStreamConsumer implements Runnable {
       int newLineIndex = userInputBuild.indexOf("\n");
       int lastNewLineIndex = userInputBuild.lastIndexOf("\n");
       int stringLengthFromZero = userInputBuild.length() - 1;
+      // TODO wenn ein \r enthalten ist dann soll ein Error zurückgegeben werden.
 
-      if (!Thread.currentThread().isInterrupted()) {
-        syslog(
-            facility,
-            8,
-            String.format(
-                """
-
-First NL: %s
-Last NL: %s
-Length (from 0): %s
-String:\s
-========================================
-%s
-========================================
-""",
-                newLineIndex, lastNewLineIndex, stringLengthFromZero, userInputBuild));
-      }
+      if (!Thread.currentThread().isInterrupted()) {syslog(
+          facility,
+          8,
+          String.format(
+              "\n"
+                  + "First NL: %s\n"
+                  + "Last NL: %s\n"
+                  + "Length (from 0): %s\n"
+                  + "String: \n"
+                  + "========================================\n"
+                  + "%s"
+                  + "========================================\n",
+              newLineIndex, lastNewLineIndex, stringLengthFromZero, userInputBuild));}
 
       // Exit condition and newline conformity checks
       if (newLineIndex != -1) { // We have at least one newline
@@ -167,11 +168,13 @@ String:\s
         if (newLineIndex != lastNewLineIndex) { // We have more than one newline
           syslog(facility, 4, "More than one newline found");
           // TODO handle case
+          // Aufsplitten des Strings in vor \n und nach \n
+            // jksadbfkjbdsaj\niudsafiraesf = 2 blöcke
 
         } else if (lastNewLineIndex != stringLengthFromZero) { // The one newline is not at the end
           syslog(facility, 4, "Newline is not at the end of the input");
           // TODO handle case
-
+          // Kein newline bedeutet glaube ich keine weiterverarbeitung. ERROR?
         } else { // everything is fine. the string is ok. Exit while loop
           syslog(facility, 8, "The user input might be valid. Proceeding to validation.");
           break;
