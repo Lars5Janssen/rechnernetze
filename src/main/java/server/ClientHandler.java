@@ -12,29 +12,33 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 public class ClientHandler implements Runnable {
-  private String facility;
-
-  private Config config = new Config().loadConfig();
+  private final String facility;
+  private final Config config = new Config().loadConfig();
   private final Socket socket;
-  private ClientHandlerStreamConsumer clientHandlerStreamConsumer;
   private BlockingQueue<String> inputQueue;
   private Thread helperThread;
   String userInput;
   private DataOutputStream dataOut;
-  private String[] commands = new String[config.getCommands().size()];
-  private String shutdownMessage;
-  private Semaphore timeoutSemaphore;
-  private Semaphore shutdownSemaphore;
-  private List<Long> threadList;
+  private final String[] commands = new String[config.getCommands().size()];
+  private final String shutdownMessage;
+  private final Semaphore timeoutSemaphore;
+  private final Semaphore shutdownSemaphore;
+  private final List<Long> threadList;
 
-  ClientHandler(Socket socket, String facility, Semaphore timeoutSemaphore, Semaphore shutdownSemaphore, List<Long> threadList, String shutdownMessage) {
+  ClientHandler(
+      Socket socket,
+      String facility,
+      Semaphore timeoutSemaphore,
+      Semaphore shutdownSemaphore,
+      List<Long> threadList,
+      String shutdownMessage) {
     this.shutdownMessage = shutdownMessage;
     this.facility = "CH" + facility;
     this.socket = socket;
     this.threadList = threadList;
     try {
       this.dataOut = new DataOutputStream(socket.getOutputStream());
-      if (shutdownMessage.equals("")) {
+      if (shutdownMessage.isEmpty()) {
         syslog(this.facility, 8, "Accepted new Client");
       }
     } catch (IOException e) {
@@ -45,16 +49,16 @@ public class ClientHandler implements Runnable {
     this.timeoutSemaphore = timeoutSemaphore;
     this.shutdownSemaphore = shutdownSemaphore;
 
-    if (shutdownMessage.equals("")) {
+    if (shutdownMessage.isEmpty()) {
       this.inputQueue = new LinkedBlockingDeque<>(config.getMessageQueueLength());
-      clientHandlerStreamConsumer =
-              new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
+      ClientHandlerStreamConsumer clientHandlerStreamConsumer =
+          new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
       helperThread = new Thread(clientHandlerStreamConsumer);
       helperThread.start();
     }
     for (int i = 0;
-         i < config.getCommands().size();
-         i++) { // Initialize list of understood commands
+        i < config.getCommands().size();
+        i++) { // Initialize list of understood commands
       commands[i] = config.getCommands().get(i).split(" ")[0];
     }
   }
@@ -63,20 +67,24 @@ public class ClientHandler implements Runnable {
   public void run() {
     threadList.add(Thread.currentThread().threadId());
 
-    if (!shutdownMessage.equals("")) {
+    if (!shutdownMessage.isEmpty()) {
       messageToClient(shutdownMessage);
       handleBye();
     }
 
-    while (!socket.isClosed() && helperThread.isAlive() && !Thread.currentThread().isInterrupted()) {
+    while (!socket.isClosed()
+        && helperThread.isAlive()
+        && !Thread.currentThread().isInterrupted()) {
 
       try {
         userInput = inputQueue.poll(1000, TimeUnit.MILLISECONDS);
-        if (userInput == null) {continue;}
+        if (userInput == null) {
+          continue;
+        }
         try {
           timeoutSemaphore.acquire();
         } catch (InterruptedException e) {
-          syslog(facility,2,"timeoutSemaphore acquire was interrupted");
+          syslog(facility, 2, "timeoutSemaphore acquire was interrupted");
         }
       } catch (InterruptedException e) {
         syslog(facility, 1, "Was interrupted when taking out of input queue");
@@ -100,7 +108,8 @@ public class ClientHandler implements Runnable {
 
   private boolean validateCommand(String message) {
     for (String command : commands) {
-      if (message.indexOf(command) == 0) { // message.strip().inde[...] to remove trailing and leading white spaces
+      if (message.indexOf(command)
+          == 0) { // message.strip().inde[...] to remove trailing and leading white spaces
         if (command.equals("BYE") && message.length() == 4) return true;
         else if (command.equals("BYE")) return false;
 
@@ -113,7 +122,7 @@ public class ClientHandler implements Runnable {
   private String handleMessage(String message) {
     syslog(facility, 8, "Handling message: " + message);
 
-      String[] messageSplit = message.split(" ", 2);
+    String[] messageSplit = message.split(" ", 2);
     String command = messageSplit[0].replace("\n", "");
     return switch (command) {
       case "LOWERCASE" -> messageSplit[1].toLowerCase();
@@ -124,12 +133,12 @@ public class ClientHandler implements Runnable {
         yield command;
       }
       case "SHUTDOWN" -> {
-        if (messageSplit[1].replaceAll("\n","").equals(config.getPassword())) {
+        if (messageSplit[1].replaceAll("\n", "").equals(config.getPassword())) {
           messageToClient("Initializing shutdown");
           try {
-              shutdownSemaphore.acquire();
+            shutdownSemaphore.acquire();
           } catch (InterruptedException e) {
-            syslog(facility,2,"shutdownSemaphore acquire was interrupted");
+            syslog(facility, 2, "shutdownSemaphore acquire was interrupted");
           }
           handleBye();
           yield command;
@@ -146,18 +155,12 @@ public class ClientHandler implements Runnable {
     Thread.currentThread().interrupt();
   }
 
-  private void handleShutdown() {
-    syslog(facility, 8, "Invoked Shutdown");
-  }
-
   private void closeSocket() {
     try {
-      if (helperThread != null) {
-        helperThread.interrupt();
-      }
+      if (helperThread != null) helperThread.interrupt();
       dataOut.close();
       socket.close();
-      syslog(facility,1,String.valueOf(Thread.currentThread().threadId()));
+      syslog(facility, 1, String.valueOf(Thread.currentThread().threadId()));
       threadList.remove(Thread.currentThread().threadId());
       Thread.currentThread().interrupt();
     } catch (IOException e) {
@@ -173,11 +176,5 @@ public class ClientHandler implements Runnable {
       syslog(facility, 1, "Could not message client");
     }
   }
-
-  private void welcomeClient() {
-    messageToClient(config.getWelcomeMSG());
-    for (String command : config.getCommands()) {
-      messageToClient(command);
-    }
-  }
 }
+

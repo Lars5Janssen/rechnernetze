@@ -12,12 +12,11 @@ import java.util.concurrent.BlockingQueue;
 import org.apache.commons.lang3.StringUtils;
 
 public class ClientHandlerStreamConsumer implements Runnable {
-  private String facility;
-  private Config config = new Config().loadConfig();
-  private Socket socket;
+  private final String facility;
+  private final Config config = new Config().loadConfig();
+  private final Socket socket;
   private DataInputStream dataIn;
-  private BlockingQueue<String> inputQueue;
-  private byte[] streamBuffer = new byte[config.getPackageLength()];
+  private final BlockingQueue<String> inputQueue;
   private StringBuilder userInputBuild;
   private boolean errorFlag = false;
 
@@ -38,7 +37,9 @@ public class ClientHandlerStreamConsumer implements Runnable {
     while (!socket.isClosed() && !errorFlag && !Thread.currentThread().isInterrupted()) {
       String userInput = getUserInput();
       if (userInput == null) {
-        if (socket.isClosed()) {syslog(facility, 1, "Error while reading input");}
+        if (socket.isClosed()) {
+          syslog(facility, 1, "Error while reading input");
+        }
         return;
       }
       if (!inputQueue.add(userInput)) {
@@ -50,24 +51,21 @@ public class ClientHandlerStreamConsumer implements Runnable {
                 config.getMessageQueueLength()));
       }
     }
-      try {
-        dataIn.close();
-        socket.close();
-      } catch (IOException e) {
-        syslog(facility,1, "Could not close dataIn or Socket");
-      }
+    try {
+      dataIn.close();
+      socket.close();
+    } catch (IOException e) {
+      syslog(facility, 1, "Could not close dataIn or Socket");
+    }
   }
 
   private boolean checkMaxPackageLength(int messageLength) {
-    if (messageLength > config.getPackageLength()) {
-      return false;
-    }
-    return true;
+    return messageLength <= config.getPackageLength();
   }
 
   private String convertToUTF8(byte[] arr) {
     return StringUtils.toEncodedString(
-        arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 libary
+        arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 library
   }
 
   private void handleMessageOverSizeLimit() throws IOException {
@@ -75,7 +73,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
     // messageToClient("Nachricht ist laenger als 255 Zeichen!");
     dataIn.skip(dataIn.available());
     userInputBuild = new StringBuilder();
-    streamBuffer = new byte[255];
+    byte[] streamBuffer = new byte[255];
   }
 
   private String getUserInput() {
@@ -92,7 +90,9 @@ public class ClientHandlerStreamConsumer implements Runnable {
       try {
         messageLength = dataIn.read(streamBuffer, 0, streamBuffer.length);
       } catch (IOException e) {
-        if (!Thread.currentThread().isInterrupted()) {syslog(facility, 1, "Could not read from dataIn");}
+        if (!Thread.currentThread().isInterrupted()) {
+          syslog(facility, 1, "Could not read from dataIn");
+        }
         errorFlag = true;
       }
 
@@ -102,7 +102,9 @@ public class ClientHandlerStreamConsumer implements Runnable {
               Arrays.copyOfRange(
                   streamBuffer, 0, messageLength); // cut array to the actual message length
         } catch (IllegalArgumentException e) {
-          if (socket.isClosed()) {syslog(facility, 1, "messageLength not set, could not read from dataIn");}
+          if (socket.isClosed()) {
+            syslog(facility, 1, "messageLength not set, could not read from dataIn");
+          }
           errorFlag = true;
           return null;
         }
@@ -120,7 +122,9 @@ public class ClientHandlerStreamConsumer implements Runnable {
           break;
         }
       } catch (IOException e) {
-        if (!Thread.currentThread().isInterrupted()) {syslog(facility, 1, "Could not get remaining length from dataIn");}
+        if (!Thread.currentThread().isInterrupted()) {
+          syslog(facility, 1, "Could not get remaining length from dataIn");
+        }
       }
 
       // Append the byteArray of correct length to the stringBuilder
@@ -139,19 +143,23 @@ public class ClientHandlerStreamConsumer implements Runnable {
       int lastNewLineIndex = userInputBuild.lastIndexOf("\n");
       int stringLengthFromZero = userInputBuild.length() - 1;
 
-      if (!Thread.currentThread().isInterrupted()) {syslog(
-          facility,
-          8,
-          String.format(
-              "\n"
-                  + "First NL: %s\n"
-                  + "Last NL: %s\n"
-                  + "Length (from 0): %s\n"
-                  + "String: \n"
-                  + "========================================\n"
-                  + "%s\n"
-                  + "========================================\n",
-              newLineIndex, lastNewLineIndex, stringLengthFromZero, userInputBuild));}
+      if (!Thread.currentThread().isInterrupted()) {
+        syslog(
+            facility,
+            8,
+            String.format(
+                """
+
+First NL: %s
+Last NL: %s
+Length (from 0): %s
+String:\s
+========================================
+%s
+========================================
+""",
+                newLineIndex, lastNewLineIndex, stringLengthFromZero, userInputBuild));
+      }
 
       // Exit condition and newline conformity checks
       if (newLineIndex != -1) { // We have at least one newline
