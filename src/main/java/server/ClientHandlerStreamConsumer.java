@@ -69,12 +69,14 @@ public class ClientHandlerStreamConsumer implements Runnable {
         arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 library
   }
 
-  private void handleMessageOverSizeLimit() throws IOException {
-    syslog(facility, 4, "Message over 255 bytes received");
-    // messageToClient("Nachricht ist laenger als 255 Zeichen!");
-    dataIn.skip(dataIn.available());
-    userInputBuild = new StringBuilder();
-    byte[] streamBuffer = new byte[config.getPackageLength()];
+  private void discardStream(String message) {
+    try {
+      dataIn.skip(Long.MAX_VALUE);
+    } catch (IOException e) {
+      syslog(facility,1,"Could not skip message");
+    } finally {
+      inputQueue.add("\r" + message); // TODO change clientHandler to use \r
+    }
   }
 
   private void getUserInput() {
@@ -98,30 +100,31 @@ public class ClientHandlerStreamConsumer implements Runnable {
       }
 
       if (messageLength>config.getPackageLength()) {
-        syslog(facility,1,"TESTING ERROR");
-        // TODO ERROR
+          discardStream("ERROR Your message is over the size limit");
       }
 
       userInputBuild.append(convertToUTF8(Arrays.copyOfRange(streamBuffer, 0, messageLength)));
 
       if (userInputBuild.length() > config.getPackageLength() || userInputBuild.indexOf("\r") != -1)  {
-        syslog(facility,1,"TESTING ERROR");
-        // TODO discard everything and error to client
+        discardStream("ERROR Your message either got to long over several packages or has illegal character \\r");
 
       } else if (userInputBuild.indexOf("\n") != -1) {
           while (userInputBuild.indexOf("\n") != -1) {
             int nLIndex = userInputBuild.indexOf("\n");
             String substring = userInputBuild.substring(0,nLIndex);
-            //syslog(facility,8,String.format("nLIndex: %s\nSubstring:\n%s\nString:\n%s\n",nLIndex,substring,userInputBuild.toString()));
 
-            inputQueue.add(substring); // TODO .add() is boolean and can return false
-            syslog(facility,8,Arrays.toString(inputQueue.toArray()));
+            if(!inputQueue.add(substring)) {
+              syslog(facility,1,"COULD NOT ADD TO QUEUE");
+            }
+            syslog(facility,8,"Shared Array: " + Arrays.toString(inputQueue.toArray()));
             userInputBuild.delete(0,nLIndex+1);
           }
           if (!userInputBuild.isEmpty()) {
-            syslog(facility,1,"TESTING ERROR");
-            // TODO return error for rest of string
+            inputQueue.add("\r" + "ERROR Your message contained an protocol non-conforming part");
+
+
           }
+          inputQueue.add("\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can not be input from user, per protocol
       }
 
 

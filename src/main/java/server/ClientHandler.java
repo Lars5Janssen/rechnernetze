@@ -83,7 +83,6 @@ public class ClientHandler implements Runnable {
         if (userInput == null) {
           continue;
         }
-        syslog(facility,8,userInput);
         try {
           timeoutSemaphore.acquire();
         } catch (InterruptedException e) {
@@ -115,6 +114,7 @@ public class ClientHandler implements Runnable {
       if (message.indexOf(command)
           == 0) { // message.strip().inde[...] to remove trailing and leading white spaces
         if (command.equals("BYE")) return true;
+        if (command.contains("\r")) return true; // Byepass for \r for Stream consumer Messages
 
         if (message.indexOf(" ") == command.length()) return true;
       }
