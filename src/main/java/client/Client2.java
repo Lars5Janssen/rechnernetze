@@ -39,9 +39,7 @@ public class Client2 {
         String messageToSend = scanner.nextLine();
         bufferedWriter.write(messageToSend + "\n");
         bufferedWriter.flush();
-        if ("BYESHUTDOWN".contains(messageToSend)) {
-          flag = true;
-        }
+        if ("BYESHUTDOWN".contains(messageToSend)) flag = true;
       }
     } catch (Exception e) {
       closeEverything(clientSocket, bufferedReader, bufferedWriter);
