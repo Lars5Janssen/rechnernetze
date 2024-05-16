@@ -5,7 +5,6 @@ import static syslog.Syslog.syslog;
 import config.Config;
 import java.io.*;
 import java.net.Socket;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -51,7 +50,8 @@ public class ClientHandler implements Runnable {
     this.shutdownSemaphore = shutdownSemaphore;
 
     if (shutdownMessage.isEmpty()) {
-      this.inputQueue = new LinkedBlockingDeque<>(config.getPackageLength()); // config.getMessageQueueLength();
+      this.inputQueue =
+          new LinkedBlockingDeque<>(config.getPackageLength()); // config.getMessageQueueLength();
       ClientHandlerStreamConsumer clientHandlerStreamConsumer =
           new ClientHandlerStreamConsumer(this.socket, facility, this.inputQueue);
       helperThread = new Thread(clientHandlerStreamConsumer);
@@ -123,7 +123,8 @@ public class ClientHandler implements Runnable {
   }
 
   // TODO Hier muss aufjedenfall dafür gesorgt werden das die Nachricht bei dem
-  // TODO \n getrennt wird und in die Queue kommt. alternativ geht das natürlich auch direkt im ClientHandlerStreamComsumer
+  // TODO \n getrennt wird und in die Queue kommt. alternativ geht das natürlich auch direkt im
+  // ClientHandlerStreamComsumer
   // TODO bei \r soll die nachricht nicht akzeptiert werden und ein Error zurückkommen.
   private String handleMessage(String message) {
     syslog(facility, 8, "Handling message: " + message);
@@ -151,6 +152,10 @@ public class ClientHandler implements Runnable {
         } else {
           yield "Wrong Password";
         }
+      }
+      case "\r" -> {
+        messageToClient(messageSplit[1]);
+        yield null;
       }
       default -> null;
     };
@@ -183,4 +188,3 @@ public class ClientHandler implements Runnable {
     }
   }
 }
-
