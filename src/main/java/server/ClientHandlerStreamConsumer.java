@@ -105,7 +105,6 @@ public class ClientHandlerStreamConsumer implements Runnable {
         while (userInputBuild.indexOf("\n") != -1) {
           int nLIndex = userInputBuild.indexOf("\n");
           String substring = userInputBuild.substring(0, nLIndex);
-          syslog(facility,8,"Added substring: " + substring);
           if (!appendToStream(substring)) {
             syslog(facility, 1, "COULD NOT ADD TO QUEUE");
           }

@@ -74,6 +74,8 @@ public class ClientHandler implements Runnable {
       handleBye();
     }
 
+    StringBuilder responseMessage = new StringBuilder();
+
     while (!socket.isClosed()
         && helperThread.isAlive()
         && !helperThread.isInterrupted()
@@ -84,7 +86,8 @@ public class ClientHandler implements Runnable {
         if (userInput == null) {
           continue;
         }
-        syslog(facility,8,String.format("Getting %s",userInput.replace("\r","\\r")));
+        syslog(facility,8,String.format("Getting %s",
+                userInput.replace("\r","\\r").replace("\n","\\n")));
         try {
           timeoutSemaphore.acquire();
         } catch (InterruptedException e) {
@@ -94,7 +97,6 @@ public class ClientHandler implements Runnable {
         syslog(facility, 1, "Was interrupted when taking out of input queue");
         closeSocket();
       }
-      StringBuilder responseMessage = new StringBuilder();
 
       if (validateCommand(userInput)) {
         String response = handleMessage(userInput);
@@ -103,23 +105,23 @@ public class ClientHandler implements Runnable {
           continue;
         } if (response.equals("\r")) {
           messageToClient(responseMessage.toString());
+          responseMessage = new StringBuilder();
         } else {
-        responseMessage.append("OK ").append(response);
+        responseMessage.append("OK ").append(response).append("\n");
         }
-
       } else {
-        messageToClient("ERROR UNKNOWN COMMAND");
+        responseMessage.append("ERROR UNKOWN COMMAND: " + userInput + "\n");
       }
     }
     closeSocket();
   }
 
   private boolean validateCommand(String message) {
+    if (message.contains("\r")) return true;
     for (String command : commands) {
       if (message.indexOf(command)
           == 0) { // message.strip().inde[...] to remove trailing and leading white spaces
         if (command.equals("BYE")) return true;
-        if (command.contains("\r")) return true; // Byepass for \r for Stream consumer Messages
 
         if (message.indexOf(" ") == command.length()) return true;
       }
@@ -132,11 +134,10 @@ public class ClientHandler implements Runnable {
   // ClientHandlerStreamComsumer
   // TODO bei \r soll die nachricht nicht akzeptiert werden und ein Error zurückkommen.
   private String handleMessage(String message) {
-    syslog(facility, 8, "Handling message: " + message);
+    syslog(facility, 8, "Handling message: " + message.replace("\r","\\r"));
 
     String[] messageSplit = message.split(" ", 2);
     String command = messageSplit[0];
-    syslog(facility,8,command);
     return switch (command) {
       case "LOWERCASE" -> messageSplit[1].toLowerCase();
       case "UPPERCASE" -> messageSplit[1].toUpperCase();
@@ -159,8 +160,10 @@ public class ClientHandler implements Runnable {
           yield "Wrong Password";
         }
       }
-      case "\r " -> messageSplit[1];
-      case "\r" -> messageSplit[0];
+      case "\r" -> {
+        if (messageSplit.length > 1) yield messageSplit[1];
+        else yield "\r";
+      }
       default -> null;
     };
   }
@@ -175,7 +178,6 @@ public class ClientHandler implements Runnable {
       if (helperThread != null) helperThread.interrupt();
       dataOut.close();
       socket.close();
-      syslog(facility, 1, String.valueOf(Thread.currentThread().threadId()));
       threadList.remove(Thread.currentThread().threadId());
       Thread.currentThread().interrupt();
     } catch (IOException e) {
