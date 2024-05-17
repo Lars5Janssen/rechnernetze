@@ -5,6 +5,7 @@ import static syslog.Syslog.syslog;
 import config.Config;
 import java.io.*;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -83,6 +84,7 @@ public class ClientHandler implements Runnable {
         if (userInput == null) {
           continue;
         }
+        syslog(facility,8,String.format("Getting %s",userInput.replace("\r","\\r")));
         try {
           timeoutSemaphore.acquire();
         } catch (InterruptedException e) {
@@ -92,15 +94,18 @@ public class ClientHandler implements Runnable {
         syslog(facility, 1, "Was interrupted when taking out of input queue");
         closeSocket();
       }
+      StringBuilder responseMessage = new StringBuilder();
 
       if (validateCommand(userInput)) {
         String response = handleMessage(userInput);
-        System.out.println("Response: " + response);
         if (response == null) {
-          messageToClient("ERROR while handling message");
+          responseMessage.append("ERROR while handling message\n");
           continue;
+        } if (response.equals("\r")) {
+          messageToClient(responseMessage.toString());
+        } else {
+        responseMessage.append("OK ").append(response);
         }
-        messageToClient("OK " + response);
 
       } else {
         messageToClient("ERROR UNKNOWN COMMAND");
@@ -131,6 +136,7 @@ public class ClientHandler implements Runnable {
 
     String[] messageSplit = message.split(" ", 2);
     String command = messageSplit[0];
+    syslog(facility,8,command);
     return switch (command) {
       case "LOWERCASE" -> messageSplit[1].toLowerCase();
       case "UPPERCASE" -> messageSplit[1].toUpperCase();
@@ -153,10 +159,8 @@ public class ClientHandler implements Runnable {
           yield "Wrong Password";
         }
       }
-      case "\r" -> {
-        messageToClient(messageSplit[1]);
-        yield null;
-      }
+      case "\r " -> messageSplit[1];
+      case "\r" -> messageSplit[0];
       default -> null;
     };
   }

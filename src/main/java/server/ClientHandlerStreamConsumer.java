@@ -54,13 +54,18 @@ public class ClientHandlerStreamConsumer implements Runnable {
         arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 library
   }
 
+  private boolean appendToStream(String message) {
+    syslog(facility, 8, String.format("Adding %s", message.replace("\r","\\r")));
+    return inputQueue.add(message);
+  }
+
   private void discardStream(String message) {
     try {
       dataIn.skip(Long.MAX_VALUE);
     } catch (IOException e) {
       syslog(facility, 1, "Could not skip message");
     } finally {
-      inputQueue.add("\r " + message); // TODO change clientHandler to use \r
+      appendToStream("\r " + message); // TODO change clientHandler to use \r
     }
   }
 
@@ -100,19 +105,17 @@ public class ClientHandlerStreamConsumer implements Runnable {
         while (userInputBuild.indexOf("\n") != -1) {
           int nLIndex = userInputBuild.indexOf("\n");
           String substring = userInputBuild.substring(0, nLIndex);
-
-          if (!inputQueue.add(substring)) {
+          syslog(facility,8,"Added substring: " + substring);
+          if (!appendToStream(substring)) {
             syslog(facility, 1, "COULD NOT ADD TO QUEUE");
           }
-          syslog(facility, 8, "Shared Array: " + Arrays.toString(inputQueue.toArray()));
           userInputBuild.delete(0, nLIndex + 1);
         }
         if (!userInputBuild.isEmpty()) {
-          inputQueue.add("\r " + "ERROR Your message contained an protocol non-conforming part");
+          appendToStream("\r " + "ERROR Your message contained an protocol non-conforming part");
         }
-        inputQueue.add(
-            "\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can
-                   // not be input from user, per protocol
+        appendToStream("\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can
+        // not be input from user, per protocol
       }
     }
   }
