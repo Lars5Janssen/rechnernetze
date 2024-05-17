@@ -5,7 +5,6 @@ import static syslog.Syslog.syslog;
 import config.Config;
 import java.io.*;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -86,8 +85,10 @@ public class ClientHandler implements Runnable {
         if (userInput == null) {
           continue;
         }
-        syslog(facility,8,String.format("Getting %s",
-                userInput.replace("\r","\\r").replace("\n","\\n")));
+        syslog(
+            facility,
+            8,
+            String.format("Getting %s", userInput.replace("\r", "\\r").replace("\n", "\\n")));
         try {
           timeoutSemaphore.acquire();
         } catch (InterruptedException e) {
@@ -103,14 +104,19 @@ public class ClientHandler implements Runnable {
         if (response == null) {
           responseMessage.append("ERROR while handling message\n");
           continue;
-        } if (response.equals("\r")) {
+        }
+        if (response.equals("\r")) {
           messageToClient(responseMessage.toString());
           responseMessage = new StringBuilder();
         } else {
-        responseMessage.append("OK ").append(response).append("\n");
+          if (response.indexOf("ERROR") != 0)
+          {
+            responseMessage.append("OK ");
+          }
+          responseMessage.append(response);
         }
       } else {
-        responseMessage.append("ERROR UNKOWN COMMAND: " + userInput + "\n");
+        responseMessage.append("ERROR UNKOWN COMMAND: " + userInput);
       }
     }
     closeSocket();
@@ -126,6 +132,7 @@ public class ClientHandler implements Runnable {
         if (message.indexOf(" ") == command.length()) return true;
       }
     }
+    syslog(facility, 7, "\"" + message + "\" is not valid");
     return false;
   }
 
@@ -134,38 +141,40 @@ public class ClientHandler implements Runnable {
   // ClientHandlerStreamComsumer
   // TODO bei \r soll die nachricht nicht akzeptiert werden und ein Error zurückkommen.
   private String handleMessage(String message) {
-    syslog(facility, 8, "Handling message: " + message.replace("\r","\\r"));
+    syslog(facility, 8, "Handling message: " + message.replace("\r", "\\r"));
 
     String[] messageSplit = message.split(" ", 2);
     String command = messageSplit[0];
-    return switch (command) {
-      case "LOWERCASE" -> messageSplit[1].toLowerCase();
-      case "UPPERCASE" -> messageSplit[1].toUpperCase();
-      case "REVERSE" -> new StringBuilder(messageSplit[1]).reverse().toString();
-      case "BYE" -> {
-        handleBye();
-        yield command;
-      }
-      case "SHUTDOWN" -> {
-        if (messageSplit[1].replaceAll("\n", "").equals(config.getPassword())) {
-          messageToClient("Initializing shutdown");
-          try {
-            shutdownSemaphore.acquire();
-          } catch (InterruptedException e) {
-            syslog(facility, 2, "shutdownSemaphore acquire was interrupted");
+    String retString =
+        switch (command) {
+          case "LOWERCASE" -> messageSplit[1].toLowerCase();
+          case "UPPERCASE" -> messageSplit[1].toUpperCase();
+          case "REVERSE" -> new StringBuilder(messageSplit[1]).reverse().toString();
+          case "BYE" -> {
+            handleBye();
+            yield command;
           }
-          handleBye();
-          yield command;
-        } else {
-          yield "Wrong Password";
-        }
-      }
-      case "\r" -> {
-        if (messageSplit.length > 1) yield messageSplit[1];
-        else yield "\r";
-      }
-      default -> null;
-    };
+          case "SHUTDOWN" -> {
+            if (messageSplit[1].replaceAll("\n", "").equals(config.getPassword())) {
+              messageToClient("Initializing shutdown");
+              try {
+                shutdownSemaphore.acquire();
+              } catch (InterruptedException e) {
+                syslog(facility, 2, "shutdownSemaphore acquire was interrupted");
+              }
+              handleBye();
+              yield command;
+            } else {
+              yield "Wrong Password";
+            }
+          }
+          case "\r" -> {
+            if (messageSplit.length > 1) yield messageSplit[1];
+            else yield "\r";
+          }
+          default -> null;
+        };
+    return retString;
   }
 
   private void handleBye() {
@@ -186,7 +195,7 @@ public class ClientHandler implements Runnable {
   }
 
   public void messageToClient(String message) {
-    syslog(facility, 8, "Sending message to client: " + message + "\n");
+    syslog(facility, 8, "Sending message to client:\n" + message);
     try {
       dataOut.writeBytes(message + "\n"); // Fehler bei formatierung
     } catch (IOException e) {

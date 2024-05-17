@@ -45,10 +45,6 @@ public class ClientHandlerStreamConsumer implements Runnable {
     }
   }
 
-  private boolean checkMaxPackageLength(int messageLength) {
-    return messageLength <= config.getPackageLength();
-  }
-
   private String convertToUTF8(byte[] arr) {
     return StringUtils.toEncodedString(
         arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 library
@@ -61,7 +57,9 @@ public class ClientHandlerStreamConsumer implements Runnable {
 
   private void discardStream(String message) {
     try {
-      dataIn.skip(Long.MAX_VALUE);
+      syslog(facility,6,"Input to long, skipping all");
+      byte[] clearArray = new byte[dataIn.available()];
+      dataIn.read(clearArray);
     } catch (IOException e) {
       syslog(facility, 1, "Could not skip message");
     } finally {
@@ -91,8 +89,9 @@ public class ClientHandlerStreamConsumer implements Runnable {
 
       if (messageLength > config.getPackageLength()) {
         discardStream("ERROR Your message is over the size limit");
+        appendToStream("\r");
+        continue;
       }
-
       userInputBuild.append(convertToUTF8(Arrays.copyOfRange(streamBuffer, 0, messageLength)));
 
       if (userInputBuild.length() > config.getPackageLength()
