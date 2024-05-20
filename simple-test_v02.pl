@@ -73,7 +73,7 @@ print "\n##### 1 OK #####\n";
 
 print "\n##### 1 OK, 1 EMPTY #####\n";
 # first cmd ok, 2nd is empty cmmand
-&myRequest( $socket, "y", "REVERSE TEST02-OK-and-ERR-\\n\\n11111111122222222222\n\n" );
+&myRequest( $socket, "", "REVERSE TEST02-OK-and-ERR-\\n\\n11111111122222222222\n\n" );
 
 print "\n##### 1 ERROR \\p #####\n";
 
@@ -97,7 +97,7 @@ print "\n##### 1 ERROR \\p #####\n";
 
 print "\n##### 2 OK #####\n";
 # two commands in one chunk, should result in two OK responses
-&myRequest( $socket, "y", "REVERSE TEST06a-OK-11111111122222222222\nREVERSE TEST06b-OK-11111111122222222222\n" );
+&myRequest( $socket, "", "REVERSE TEST06a-OK-11111111122222222222\nREVERSE TEST06b-OK-11111111122222222222\n" );
 
 # four requests triggering two errors for 256 and 257 useful characters
 #&myRequest( $socket, "", "REVERSE TEST07-OK-254-22223333333333333334444444444444445555555555555566666666666666677777777777777777777788888888888888999999999999900000000000000AAAAAAAAAAAAAAAAAAAAAAAABBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBCCCCCCCCCCCCCCCCCCCCCCCCCCCCDDDDDDDDDDDDDDDDDDD\n" );

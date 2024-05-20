@@ -5,6 +5,8 @@ import static syslog.Syslog.syslog;
 import config.Config;
 import java.io.*;
 import java.net.Socket;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -194,11 +196,14 @@ public class ClientHandler implements Runnable {
   }
 
   public void messageToClient(String message) {
+    String msg = message + "\n";
     syslog(facility, 8, "Sending message to client:\n" + message);
     try {
-      dataOut.writeBytes(message + "\n"); // Fehler bei formatierung
+      dataOut.write(msg.getBytes(StandardCharsets.UTF_8));
+      dataOut.flush();
     } catch (IOException e) {
       syslog(facility, 1, "Could not message client");
     }
+
   }
 }

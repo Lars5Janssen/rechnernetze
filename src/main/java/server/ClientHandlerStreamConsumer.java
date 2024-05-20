@@ -96,9 +96,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
 
       if (userInputBuild.length() > config.getPackageLength()
           || userInputBuild.indexOf("\r") != -1) {
-        discardStream(
-            "ERROR Your message either got to long over several packages or has illegal character \\r");
-
+        discardStream("ERROR Your message either got to long over several packages or has illegal character \\r");
       } else if (userInputBuild.indexOf("\n") != -1) {
         while (userInputBuild.indexOf("\n") != -1) {
           int nLIndex = userInputBuild.indexOf("\n");
@@ -111,8 +109,8 @@ public class ClientHandlerStreamConsumer implements Runnable {
         if (!userInputBuild.isEmpty()) {
           appendToStream("\r " + "ERROR Your message contained an protocol non-conforming part");
         }
-        appendToStream("\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can not be input from user, per protocol
       }
+      appendToStream("\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can not be input from user, per protocol
     }
   }
 }
