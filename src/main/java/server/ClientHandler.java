@@ -116,7 +116,7 @@ public class ClientHandler implements Runnable {
           responseMessage.append(response);
         }
       } else {
-        responseMessage.append("ERROR UNKOWN COMMAND: " + userInput);
+        responseMessage.append("\nERROR UNKOWN COMMAND: " + userInput);
       }
     }
     closeSocket();
@@ -125,10 +125,8 @@ public class ClientHandler implements Runnable {
   private boolean validateCommand(String message) {
     if (message.contains("\r")) return true;
     for (String command : commands) {
-      if (message.indexOf(command)
-          == 0) { // message.strip().inde[...] to remove trailing and leading white spaces
+      if (message.indexOf(command) == 0) { // message.strip().inde[...] to remove trailing and leading white spaces
         if (command.equals("BYE")) return true;
-
         if (message.indexOf(" ") == command.length()) return true;
       }
     }
@@ -174,6 +172,7 @@ public class ClientHandler implements Runnable {
           }
           default -> null;
         };
+    syslog(facility,8, "Retruning: " + retString.replace("\r","\\r"));
     return retString;
   }
 

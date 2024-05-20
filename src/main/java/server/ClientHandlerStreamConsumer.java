@@ -17,7 +17,6 @@ public class ClientHandlerStreamConsumer implements Runnable {
   private final Socket socket;
   private DataInputStream dataIn;
   private final BlockingQueue<String> inputQueue;
-  private StringBuilder userInputBuild;
   private boolean errorFlag = false;
 
   public ClientHandlerStreamConsumer(
@@ -27,7 +26,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
     try {
       this.dataIn = new DataInputStream(socket.getInputStream());
     } catch (IOException e) {
-      syslog(this.facility, 1, "Could not establish intput stream");
+      syslog(this.facility, 1, "Could not establish input stream");
     }
     this.inputQueue = inputQueue;
   }
@@ -46,8 +45,9 @@ public class ClientHandlerStreamConsumer implements Runnable {
   }
 
   private String convertToUTF8(byte[] arr) {
-    return StringUtils.toEncodedString(
+    String retString = StringUtils.toEncodedString(
         arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 library
+    return retString;
   }
 
   private boolean appendToStream(String message) {
@@ -68,7 +68,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
   }
 
   private void getUserInput() {
-    userInputBuild = new StringBuilder();
+    StringBuilder userInputBuild = new StringBuilder();
     byte[] streamBuffer;
     int messageLength = 0;
 
@@ -97,8 +97,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
       if (userInputBuild.length() > config.getPackageLength()
           || userInputBuild.indexOf("\r") != -1) {
         discardStream(
-            "ERROR Your message either got to long over several packages or has illegal character"
-                + " \\r");
+            "ERROR Your message either got to long over several packages or has illegal character \\r");
 
       } else if (userInputBuild.indexOf("\n") != -1) {
         while (userInputBuild.indexOf("\n") != -1) {
@@ -112,8 +111,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
         if (!userInputBuild.isEmpty()) {
           appendToStream("\r " + "ERROR Your message contained an protocol non-conforming part");
         }
-        appendToStream("\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can
-        // not be input from user, per protocol
+        appendToStream("\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can not be input from user, per protocol
       }
     }
   }
