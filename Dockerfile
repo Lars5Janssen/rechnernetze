@@ -40,6 +40,8 @@ RUN dpkg-reconfigure --frontend noninteractive tzdata
 #RUN echo 'export VISIBLE=now' >> /etc/profile
 
 COPY entrypoint.sh entrypoint.sh
+COPY gitlog.sh gitlog.sh
+RUN chmod +x gitlog.sh
 COPY ./authorized_keys /root/.ssh/authorized_keys
 RUN chmod 0400 /root/.ssh/authorized_keys
 
