@@ -1,39 +1,12 @@
-\r = jede Nachricht die das enthält soll verworfen werden
-\n = alles was danach kommt, kommt in den Puffer und wird danach verarbeitet.
+## TODOS für Aufgabe 3
 
-Es soll keine "Server erwartet eingabe message" stattfinden. -> Done
+- Client Programmieren:
 
-OK BYE kommt bei dem Client nicht an nach dem BYE Befehl.
+Übergabe bei erstellung:
 
-Das perlscript läuft nur bis test 04
-
-Possible Inputs:
-REVERSE BLABLAB\nDIESdsa\njdslfbkjresa
-Input1 = REVERSE BLABLAB\n
-Input2 = DIESdsa\n
-Input3 = jdslfbkjresa
-
-REVERSE BLABLAB\nDIESdsa\njdslfbkjresa[.....255]
-------------
-incomming 345 --> x
-incomming 100 --> x
-------------
-StringBuilder
-
-while {
-    max 256 Bytes vom inputStream <-- Read
-    if(256 ist belegt) { <-- Check 01
-        ERROR
-    }
-    --> in den StringBuilder
-    if (bigger 255 or has '\r') { <-- Check 02
-       discard everything and return error to client <-- Output
-
-    } else if (StringBuilder has \n) { <-- Check 03
-        split at '\n'
-        add each split to Queue <-- Return
-
-        discard everything after last \n
-        return one error to client for discarded input <-- Output
-    }
-}
+    1. Hostname oder IP-Adresse des Dateitransfer-Servers
+    2. Portnummer des Dateitransfer-Servers
+    3. Quellpfad inkl. Dateiname der zu sendenden Datei auf dem lokalen System
+    4. Zielpfad inkl. Dateiname der zu empfangenden Datei auf dem Dateitransfer-Server
+    5. Window-Größe N (> 0, ganzzahlig)
+    6. Fehlerrate ERROR_RATE (>= 0, ganzzahlig) zur Übergabe an den Dateitransfer-Server
