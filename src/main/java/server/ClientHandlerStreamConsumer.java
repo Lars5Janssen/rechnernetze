@@ -88,23 +88,24 @@ public class ClientHandlerStreamConsumer implements Runnable {
         errorFlag = true;
       }
 
-      /**
-       * if (messageLength > config.getPackageLength()) { discardStream("ERROR Your message is over
-       * the size limit"); appendToStream("\r"); continue; }*
-       */
+      if (messageLength > config.getPackageLength()) {
+        discardStream("ERROR Your message is over the size limit");
+        appendToStream("\r");
+        continue;
+      }
       userInputBuild.append(convertToUTF8(Arrays.copyOfRange(streamBuffer, 0, messageLength)));
 
-      if (userInputBuild.length() > config.getPackageLength()
-          || userInputBuild.indexOf("\r") != -1) {
-        discardStream(
-            "ERROR Your message either got to long over several packages or has illegal character"
-                + " \\r");
+      if (userInputBuild.length() > config.getPackageLength()) {
+        discardStream("ERROR Your message either got to long over several packages");
+
       } else if (userInputBuild.indexOf("\n") != -1) {
         while (userInputBuild.indexOf("\n") != -1) {
           int nLIndex = userInputBuild.indexOf("\n");
           String substring = userInputBuild.substring(0, nLIndex);
-          if (!appendToStream(substring)) {
-            syslog(facility, 1, "COULD NOT ADD TO QUEUE");
+          if (substring.contains("\r")) {
+            appendToStream("\r ERROR Your message contained \\r");
+          } else {
+            if (!appendToStream(substring)) syslog(facility, 1, "COULD NOT ADD TO QUEUE");
           }
           userInputBuild.delete(0, nLIndex + 1);
         }
@@ -114,7 +115,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
       }
       appendToStream(
           "\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can
-                 // not be input from user, per protocol
+      // not be input from user, per protocol
     }
   }
 }

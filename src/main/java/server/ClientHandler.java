@@ -111,6 +111,7 @@ public class ClientHandler implements Runnable {
           messageToClient(responseMessage.toString());
           responseMessage = new StringBuilder();
         } else {
+          if (!responseMessage.isEmpty()) responseMessage.append("\n");
           if (response.indexOf("ERROR") != 0)
           {
             responseMessage.append("OK ");
