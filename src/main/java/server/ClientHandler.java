@@ -34,7 +34,7 @@ public class ClientHandler implements Runnable {
       List<Long> threadList,
       String shutdownMessage) {
     this.shutdownMessage = shutdownMessage;
-    this.facility = "CH" + facility + " on: " + socket.getRemoteSocketAddress() + ":" + socket.getLocalPort();
+    this.facility = "CH" + facility + " on: " + socket.getInetAddress().toString().replace("/","");
     this.socket = socket;
     this.threadList = threadList;
     try {
