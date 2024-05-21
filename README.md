@@ -1,5 +1,7 @@
 # Rechnernetze
-RN-SOSE 2024
+
+## Keep in mind if you want to run the other server as docker container you need to change the Branch in the Dockerfile and the -jar command in the entrypoint.sh. 
+
 ## How to ssh Tunnel
 **Your machine to proxy** \
 `ssh -L 8080:141.22.40.11:8081 infwarxxx@141.22.40.11`
