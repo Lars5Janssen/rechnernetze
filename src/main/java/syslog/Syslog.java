@@ -15,6 +15,7 @@ public final class Syslog {
     syslog(String.valueOf(facility), level, message);
   }
 
+
   public static void syslog(String facility, int level, String message) {
     printOut(String.format("[%s] Facility: %s, Level: %d, Message:\n%s",LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")),facility, level, message));
   }
