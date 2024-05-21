@@ -88,11 +88,10 @@ public class ClientHandlerStreamConsumer implements Runnable {
         errorFlag = true;
       }
 
-      if (messageLength > config.getPackageLength()) {
-        discardStream("ERROR Your message is over the size limit");
-        appendToStream("\r");
-        continue;
-      }
+      /**
+       * if (messageLength > config.getPackageLength()) { discardStream("ERROR Your message is over
+       * the size limit"); appendToStream("\r"); continue; }*
+       */
       userInputBuild.append(convertToUTF8(Arrays.copyOfRange(streamBuffer, 0, messageLength)));
 
       if (userInputBuild.length() > config.getPackageLength()) {
