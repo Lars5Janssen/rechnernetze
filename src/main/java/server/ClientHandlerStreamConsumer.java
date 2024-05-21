@@ -45,19 +45,20 @@ public class ClientHandlerStreamConsumer implements Runnable {
   }
 
   private String convertToUTF8(byte[] arr) {
-    String retString = StringUtils.toEncodedString(
-        arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 library
+    String retString =
+        StringUtils.toEncodedString(
+            arr, StandardCharsets.UTF_8); // apache commons-lang 3:3.6 library
     return retString;
   }
 
   private boolean appendToStream(String message) {
-    syslog(facility, 8, String.format("Adding %s", message.replace("\r","\\r")));
+    syslog(facility, 8, String.format("Adding %s", message.replace("\r", "\\r")));
     return inputQueue.add(message);
   }
 
   private void discardStream(String message) {
     try {
-      syslog(facility,6,"Input to long, skipping all");
+      syslog(facility, 6, "Input to long, skipping all");
       byte[] clearArray = new byte[dataIn.available()];
       dataIn.read(clearArray);
     } catch (IOException e) {
@@ -87,16 +88,17 @@ public class ClientHandlerStreamConsumer implements Runnable {
         errorFlag = true;
       }
 
-      if (messageLength > config.getPackageLength()) {
-        discardStream("ERROR Your message is over the size limit");
-        appendToStream("\r");
-        continue;
-      }
+      /**
+       * if (messageLength > config.getPackageLength()) { discardStream("ERROR Your message is over
+       * the size limit"); appendToStream("\r"); continue; }*
+       */
       userInputBuild.append(convertToUTF8(Arrays.copyOfRange(streamBuffer, 0, messageLength)));
 
       if (userInputBuild.length() > config.getPackageLength()
           || userInputBuild.indexOf("\r") != -1) {
-        discardStream("ERROR Your message either got to long over several packages or has illegal character \\r");
+        discardStream(
+            "ERROR Your message either got to long over several packages or has illegal character"
+                + " \\r");
       } else if (userInputBuild.indexOf("\n") != -1) {
         while (userInputBuild.indexOf("\n") != -1) {
           int nLIndex = userInputBuild.indexOf("\n");
@@ -110,7 +112,9 @@ public class ClientHandlerStreamConsumer implements Runnable {
           appendToStream("\r " + "ERROR Your message contained an protocol non-conforming part");
         }
       }
-      appendToStream("\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can not be input from user, per protocol
+      appendToStream(
+          "\r"); // \r is signal flag to ClientHandler that one package has been processed. \r can
+                 // not be input from user, per protocol
     }
   }
 }
