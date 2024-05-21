@@ -22,7 +22,7 @@ public class ClientHandlerStreamConsumer implements Runnable {
   public ClientHandlerStreamConsumer(
       Socket socket, String facility, BlockingQueue<String> inputQueue) {
     this.socket = socket;
-    this.facility = "IH" + facility;
+    this.facility = "IH" + facility + " on: " + socket.getInetAddress() + ":" + socket.getLocalPort();
     try {
       this.dataIn = new DataInputStream(socket.getInputStream());
     } catch (IOException e) {
