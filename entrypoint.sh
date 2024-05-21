@@ -1,7 +1,7 @@
 #!/bin/bash
 service ssh start > /dev/null
 rm -rf /rechnernetze
-git clone --quite -b redesign_praktikum1 https://github.com/Lars5Janssen/rechnernetze.git /rechnernetze > /dev/null
+git clone -q -b redesign_praktikum1 https://github.com/Lars5Janssen/rechnernetze.git /rechnernetze > /dev/null
 cd /rechnernetze
 ./gradlew fatJar > /dev/null
 cd /rechnernetze/build/libs
