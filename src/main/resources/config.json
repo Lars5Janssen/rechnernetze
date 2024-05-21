@@ -1,7 +1,17 @@
 {
-  "password": "H",
-  "maxClients": 3,
+  "password": "42",
+  "maxClients": 1,
   "port": 4242,
+  "messageQueueLength": 5,
   "timeToShutdown": 30,
-  "disconnectMSG": "No more Clients allowed."
+  "disconnectMSG": "No more Clients allowed.",
+  "packageLength": 255,
+  "welcomeMSG": "Welcome to the Server!\nHier ist eine Liste mit den zur verfuegung stehenden Kommandos.\nBitte beachte das maximal 255 Zeichen eingelesen werden koennen..\n",
+  "commands": [
+    "LOWERCASE <string> | Umwandeln einer Zeichenkette in Kleinbuchstaben.\n",
+    "UPPERCASE <string> | Umwandeln einer Zeichenkette in Grossbuchstaben.\n",
+    "REVERSE <string> | Umkehrung der Zeichenkette abc zu cba\n",
+    "BYE | Sitzungsende, nur der Client wird getrennt.\n",
+    "SHUTDOWN <password> | Sitzungsende und Herunterfahren des Servers\n"
+  ]
 }

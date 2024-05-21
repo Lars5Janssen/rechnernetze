@@ -9,10 +9,22 @@ repositories {
     mavenCentral()
 }
 
+
 dependencies {
     implementation 'com.google.code.gson:gson:2.10.1'
+    implementation 'org.apache.commons:commons-lang3:3.6'
     testImplementation platform('org.junit:junit-bom:5.10.0')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+task fatJar(type: Jar) {
+    manifest {
+        attributes 'Main-Class': "server.Server"
+    }
+    archiveBaseName = "${rootProject.name}"
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from { configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
 }
 
 test {
