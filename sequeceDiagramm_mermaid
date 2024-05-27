@@ -1,0 +1,32 @@
+sequenceDiagram
+    actor Kossakowski
+    Kossakowski->>+Client: run client with java -jar...
+    activate Kossakowski
+    Client-->>-Kossakowski: Waiting for Input
+    Kossakowski-->>Client: Parameter übergabe (arg1 = Quelle, arg2 Ziel)
+
+    critical Establish a connection to the DB
+        Client-->>Server: buildSocket()
+    option Network timeout
+        Client-->>Client: Log error
+    end
+
+    critical Send Controll Data
+        Client-->>Server: sendControllData(zielDateipfad)
+    option positiv response
+        Server-->>Client: ack()
+    option negativ response noAck
+        Client-->>Kossakowski: connection Broke
+    end
+
+    alt Erfolgreiche Übertragung
+        Client->>Server: Frames
+        Server-->>Client: ACKs
+    else Fehlerhafte Übertragung
+        alt Threshold > 3
+            Client-->Server: abbruch
+        end
+        Client->>Server: Frames
+        Server-->>Client: ACK
+    end
+    Client-->>Kossakowski: Erfolgreiche Übertragung
