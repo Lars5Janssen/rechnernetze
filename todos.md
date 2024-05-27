@@ -28,3 +28,12 @@
     4. Zielpfad inkl. Dateiname der zu empfangenden Datei auf dem Dateitransfer-Server
     5. Window-Größe N (> 0, ganzzahlig)
     6. Fehlerrate ERROR_RATE (>= 0, ganzzahlig) zur Übergabe an den Dateitransfer-Server
+
+### Vorgaben Implementierung
+
+Zur Verarbeitung von Informationen über alle verwalteten Objekte sind jeweils eigene
+Datenstrukturen (Klassen) zur Beschreibung hilfreich. Integrieren Sie eine Sequenznummer in
+jedes UDP-Datenpaket (als die ersten 8 Byte des Daten-Bytearrays). Benutzen Sie dafür die
+Methoden der mitgegebenen Klasse FCpacket und speichern Sie im Sendepuffer nur
+Pakete vom Typ FCpacket, damit Sie auch weitere Zusatzinformationen für ein gesendetes
+Paket ablegen können!
