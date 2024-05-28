@@ -2,13 +2,10 @@
 
 - [ ] Konsole für den Client
   - Nur übergabe der Quelle und des Ziels. Hostname/Portnummer/Window-Größe und Fehlerrate sind vorrausgesetzt.
-  - 
-- [ ]
-- [ ] Genau mit dem Selective-Repeat Verfahren beschäftigen.
-     Nur verloren gegangene Pakete spollen erkannt und erneut übertragen werden.
-    - [ ] -> Dynamische Berechnung der `Timeoutzeit nach algorithmus` des TCP-Verfahrens (FCdata.pdf seite 56)
-- [ ] Werte in CSV-Formate Parsen
--
+- [ ] Selective-Repeat Verfahren implementieren. (Funktional Interface oder statische Klasse?)
+  - Die Sequence wird häufig falsch berechnet. Obacht 
+  - [ ] -> Dynamische Berechnung der `Timeoutzeit nach algorithmus` des TCP-Verfahrens (FCdata.pdf seite 56)
+- [ ] Werte in CSV-Formate Parsen (Hier vielleicht ebenfalls eine statische Klasse? 1 parameter?)
 
 ## Bedenke das der Server...
 
@@ -21,8 +18,6 @@
     -> `**Dateitransfer-Client**` schickt um dies zu simulieren mit dem ersten Paket die Sequenznummer 0 als Teil der Steuerdaten   
 
 ### Client Programmieren:
-
-
 
 - richtige Reihenfolge, Flusskontrolle und mögliche Paket-Verluste. -> Selective-Repeat
 
@@ -44,8 +39,8 @@ Methoden der mitgegebenen Klasse FCpacket und speichern Sie im Sendepuffer nur
 Pakete vom Typ FCpacket, damit Sie auch weitere Zusatzinformationen für ein gesendetes
 Paket ablegen können!
 
-## Für Selective-Repeat
+### Für Selective-Repeat
 Wir benötigen:
 - Timeoutzeit nach TCP Algorithmus -> Statischen Klasse. Timeout.reTransmit()
 - CSV Parser
-- 
+
