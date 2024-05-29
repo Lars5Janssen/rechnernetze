@@ -6,10 +6,19 @@ package client;
  Autoren:
  */
 
+import com.google.common.primitives.Longs;
 import server.FC_Timer;
 import server.FCpacket;
 
 import java.io.*;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+import static syslog.Syslog.syslog;
 
 public class FileCopyClient extends Thread {
 
@@ -36,28 +45,99 @@ public class FileCopyClient extends Thread {
   private long timeoutValue = 100000000L;
 
   // ... ToDo
+  private DatagramSocket socket;
 
+  private byte[] buffer = new byte[UDP_PACKET_SIZE]; // wirklich die packet size?
+  
+  private String facility = "Client";
 
   // Constructor
   public FileCopyClient(String serverArg, String sourcePathArg,
-    String destPathArg, String windowSizeArg, String errorRateArg) {
+    String destPathArg, String windowSizeArg, String errorRateArg) throws SocketException {
     servername = serverArg;
     sourcePath = sourcePathArg;
     destPath = destPathArg;
     windowSize = Integer.parseInt(windowSizeArg);
     serverErrorRate = Long.parseLong(errorRateArg);
-
+    socket = new DatagramSocket();
   }
 
-  public void runFileCopyClient() {
+  private byte intToByte(int x) {
+    return (byte) (x & 0xFF);
+  }
 
-      // ToDo!!
-
+  private void sendInitialPacket() {
+    byte[] dest = destPath.getBytes(StandardCharsets.UTF_8);
+    byte window = intToByte(windowSize);
+    byte[] errorRate = Longs.toByteArray(serverErrorRate);
+    byte[] params = combineArrays(dest, window, errorRate);
+    FCpacket fCpacketTmp = new FCpacket(0,params,params.length);
+    DatagramPacket initialPacket = new DatagramPacket(fCpacketTmp.getData(),params.length,InetAddress.getLoopbackAddress(),SERVER_PORT);
+    try {
+      socket.send(initialPacket);
+    } catch (IOException e) {
+      syslog(facility, 1, "Could not send initial packet");
+    }
 
   }
 
   /**
-  *
+   * Kombiniert die drei Eingaben in ein einzelnes Byte-Array mit Semikolons als Trennzeichen.
+   *
+   * @param dest Das Byte-Array für den Zielpfad.
+   * @param window Das Byte für die Fenstergröße.
+   * @param errorRate Das Byte-Array für die Fehlerrate.
+   * @return Ein Byte-Array, das alle Eingaben mit Semikolons getrennt kombiniert.
+   */
+  public static byte[] combineArrays(byte[] dest, byte window, byte[] errorRate) {
+    byte semicolon = (byte) ';';
+    int combinedLength = dest.length + 1 + 1 + 1 + errorRate.length; // dest + ';' + window + ';' + errorRate
+    byte[] combined = new byte[combinedLength];
+    int index = 0;
+
+    // Kopiere das dest-Array
+    System.arraycopy(dest, 0, combined, index, dest.length);
+    index += dest.length;
+
+    combined[index++] = semicolon; // Füge das Semikolon hinzu
+    combined[index++] = window; // Füge das window-Byte hinzu
+    combined[index++] = semicolon; // Füge das Semikolon hinzu
+
+    // Kopiere das errorRate-Array
+    System.arraycopy(errorRate, 0, combined, index, errorRate.length);
+
+    return combined;
+  }
+
+  public void runFileCopyClient() throws IOException {
+      FileInputStream fileInputStream = new FileInputStream(sourcePath);
+      sendInitialPacket();
+      //Solange bytesFromSourceData noch daten hat
+      /*while (fileInputStream.available() > 0) {
+        byte[] bytesToSend = new byte[UDP_PACKET_SIZE];
+        //TODO Unsere ersten 8 sequenzbytes in bytes to Send
+        //bytesToSend befüllen
+        for (int i = 0; i < UDP_PACKET_SIZE; i++) {
+          bytesToSend[i] = (byte)fileInputStream.read();
+        }
+        FCpacket fcPacket = new FCpacket(0,bytesToSend,bytesToSend.length);
+        DatagramPacket sendetData = new DatagramPacket(fcPacket.getData(), UDP_PACKET_SIZE,InetAddress.getLoopbackAddress(),SERVER_PORT);
+        syslog(facility,8, "Byte Array: " + Arrays.toString(sendetData.getData()));
+        socket.send(sendetData);
+        // neues FCpacket absenden
+      }*/
+      socket.close();
+      // 1. Sende kontroll packet
+      // 2. Starte Konsole frage nach Parameter
+      // 3. File öffnen und bytes einlesen und in ein FCPacket packen. Wollen wir das File einlesen hier machen?
+      // 4. Timer starten
+      // 5. senden (loop)
+      // 6. nach ack Timer stoppen
+      // 7. connection close
+      // ToDo!!
+  }
+
+  /**
   * Timer Operations
   */
   public void startTimer(FCpacket packet) {
@@ -78,6 +158,7 @@ public class FileCopyClient extends Thread {
 
   /**
    * Implementation specific task performed at timeout
+   * TODO Selective Repeat Verfahren
    */
   public void timeoutTask(long seqNum) {
   // ToDo
@@ -89,7 +170,6 @@ public class FileCopyClient extends Thread {
    * Computes the current timeout value (in nanoseconds)
    */
   public void computeTimeoutValue(long sampleRTT) {
-
   // ToDo
   }
 

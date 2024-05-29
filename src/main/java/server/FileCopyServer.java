@@ -13,11 +13,13 @@ import java.net.*;
 import java.util.Collections;
 import java.util.LinkedList;
 
+import static syslog.Syslog.syslog;
+
 
 public class FileCopyServer {
   // -------- Constants
   public final static boolean TEST_OUTPUT_MODE = false;
-  public final static int SERVER_PORT = 4242;
+  public final static int SERVER_PORT = 23000;
   public final static int UDP_PACKET_SIZE = 1008;
   public final static int CONNECTION_TIMEOUT = 3000; // milliseconds
   public final static long DELAY = 10; // Propagation delay in ms
@@ -45,6 +47,9 @@ public class FileCopyServer {
   // Test error production
   private long recPacketCounter;
 
+  // For Syslog
+  private String facility = "Server";
+
   // Constructor
   public FileCopyServer() {
     receiveData = new byte[UDP_PACKET_SIZE];
@@ -66,6 +71,7 @@ public class FileCopyServer {
         udpReceivePacket = new DatagramPacket(receiveData, UDP_PACKET_SIZE);
         // Wait for data packet
         serverSocket.receive(udpReceivePacket);
+        syslog(facility,8,"Packet recieved.");
         receivedIPAddress = udpReceivePacket.getAddress();
         receivedPort = udpReceivePacket.getPort();
 
