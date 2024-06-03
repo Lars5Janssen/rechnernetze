@@ -49,7 +49,7 @@ public class FileCopyClient extends Thread {
   // ... ToDo
   private DatagramSocket socket;
 
-  private FCpacket[] sendPuffer = new FCpacket[windowSize]; // Sendepuffer mit N Plätzen (N: Window-Größe)
+  public FCpacket[] sendPuffer; // Sendepuffer mit N Plätzen (N: Window-Größe)
 
   int sendBaseIdx = 0; // spiegelt den idx im sendPuffer wieder (Sequenznummer des ältesten Pakets im Sendepuffer)
 
@@ -68,6 +68,7 @@ public class FileCopyClient extends Thread {
     windowSize = Integer.parseInt(windowSizeArg);
     serverErrorRate = Long.parseLong(errorRateArg);
     socket = new DatagramSocket();
+    sendPuffer = new FCpacket[windowSize];
   }
 
   private byte intToByte(int x) {
@@ -121,8 +122,14 @@ public class FileCopyClient extends Thread {
       FileInputStream fileInputStream = new FileInputStream(file);
       long fileSizeInBytes = file.length();
       syslog(facility,1,"FileSize: " + fileSizeInBytes);
+      FCpacket fcControl = makeControlPacket();
+      socket.send(new DatagramPacket(fcControl.getData(), fcControl.getLen(),InetAddress.getLoopbackAddress(),SERVER_PORT));
 
-      sendInitialPacket();
+      DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
+      socket.receive(ackPacket);
+      FCpacket fCpacket = new FCpacket(ackPacket.getData(), ackPacket.getLength());
+      syslog(facility,8,"Ack Packet: " + fCpacket.toString());
+
       syslog(facility,8,"Initial Packet gesendet.");
       //Solange bytesFromSourceData noch daten hat
       while (fileSizeInBytes > 0) {
@@ -138,10 +145,15 @@ public class FileCopyClient extends Thread {
         DatagramPacket sendetData = new DatagramPacket(fcPacket.getData(), UDP_PACKET_SIZE,InetAddress.getLoopbackAddress(),SERVER_PORT);
 
         fileSizeInBytes -= UDP_PACKET_SIZE;
+        nextSeqNum++;
         socket.send(sendetData);
 
+        DatagramPacket dataackPacket = new DatagramPacket(buffer, buffer.length);
+        socket.receive(dataackPacket);
+        FCpacket fackPacket = new FCpacket(dataackPacket.getData(), dataackPacket.getLength());
+        syslog(facility,8,"Ack Packet: " + fackPacket.toString());
       }
-      //socket.close();
+      socket.close();
       // 1. Sende kontroll packet
       // 2. Starte Konsole frage nach Parameter
       // 3. File öffnen und bytes einlesen und in ein FCPacket packen. Wollen wir das File einlesen hier machen?

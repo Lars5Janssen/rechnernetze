@@ -96,7 +96,7 @@ public class FileCopyServer {
 
           long seqNum = fcReceivePacket.getSeqNum();
           recPacketCounter++;
-
+          syslog(facility,8,"Before parameter set");
           // Test on simulated error (packet checksum simulation)
           if ((recPacketCounter % errorRate) == 0) {
             testOut("---- Packet " + seqNum + " corrupted! ---------");
@@ -133,6 +133,7 @@ public class FileCopyServer {
           }
         }
       } catch (SocketTimeoutException e) {
+        e.printStackTrace();
         // Copy job successfully finished
         outToFile.close();
         connectionEstablished = false;
