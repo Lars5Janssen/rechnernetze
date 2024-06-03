@@ -107,7 +107,9 @@ public class FileCopyServer {
 
             // Handle first packet --> read and set parameters
             if (seqNum == 0) {
+              syslog(facility,1,"Get seqNumber zero.");
               if (setParameters(fcReceivePacket)) {
+                syslog(facility,1,"DestPath: " + destPath);
                 // open destination file
                 outToFile = new FileOutputStream(destPath);
               } else {
@@ -206,7 +208,7 @@ public class FileCopyServer {
 
   private void writePacket(FCpacket deliverPacket) throws IOException {
     /* Deliver single FCpacket: append packet data to outfile */
-
+    syslog(facility,8,deliverPacket.toString());
     // Packet 0 is control packet --> don't write to file!
     if (deliverPacket.getSeqNum() > 0) {
       outToFile.write(deliverPacket.getData(), 0, deliverPacket.getLen());

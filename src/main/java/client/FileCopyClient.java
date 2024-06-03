@@ -4,6 +4,8 @@ package client;
  Version 0.1 - Muss erg�nzt werden!!
  Praktikum 3 Rechnernetze BAI4 HAW Hamburg
  Autoren:
+ Janssen, Lars
+ Lüdeke, Leonhard
  */
 
 import com.google.common.primitives.Longs;
@@ -47,6 +49,12 @@ public class FileCopyClient extends Thread {
   // ... ToDo
   private DatagramSocket socket;
 
+  private FCpacket[] sendPuffer = new FCpacket[windowSize]; // Sendepuffer mit N Plätzen (N: Window-Größe)
+
+  int sendBaseIdx = 0; // spiegelt den idx im sendPuffer wieder (Sequenznummer des ältesten Pakets im Sendepuffer)
+
+  int nextSeqNum = 1; // (Sequenznummer des nächsten zu sendenden Pakets)
+
   private byte[] buffer = new byte[UDP_PACKET_SIZE]; // wirklich die packet size?
   
   private String facility = "Client";
@@ -78,7 +86,6 @@ public class FileCopyClient extends Thread {
     } catch (IOException e) {
       syslog(facility, 1, "Could not send initial packet");
     }
-
   }
 
   /**
@@ -109,24 +116,32 @@ public class FileCopyClient extends Thread {
     return combined;
   }
 
-  public void runFileCopyClient() throws IOException {
-      FileInputStream fileInputStream = new FileInputStream(sourcePath);
+  public void runFileCopyClient() throws Exception {
+      File file = new File(sourcePath);
+      FileInputStream fileInputStream = new FileInputStream(file);
+      long fileSizeInBytes = file.length();
+      syslog(facility,1,"FileSize: " + fileSizeInBytes);
+
       sendInitialPacket();
+      syslog(facility,8,"Initial Packet gesendet.");
       //Solange bytesFromSourceData noch daten hat
-      /*while (fileInputStream.available() > 0) {
+      while (fileSizeInBytes > 0) {
         byte[] bytesToSend = new byte[UDP_PACKET_SIZE];
-        //TODO Unsere ersten 8 sequenzbytes in bytes to Send
+
         //bytesToSend befüllen
         for (int i = 0; i < UDP_PACKET_SIZE; i++) {
           bytesToSend[i] = (byte)fileInputStream.read();
         }
-        FCpacket fcPacket = new FCpacket(0,bytesToSend,bytesToSend.length);
+        FCpacket fcPacket = new FCpacket(nextSeqNum,bytesToSend,bytesToSend.length);
+        sendPuffer[nextSeqNum - 1] = fcPacket;
+
         DatagramPacket sendetData = new DatagramPacket(fcPacket.getData(), UDP_PACKET_SIZE,InetAddress.getLoopbackAddress(),SERVER_PORT);
-        syslog(facility,8, "Byte Array: " + Arrays.toString(sendetData.getData()));
+
+        fileSizeInBytes -= UDP_PACKET_SIZE;
         socket.send(sendetData);
-        // neues FCpacket absenden
-      }*/
-      socket.close();
+
+      }
+      //socket.close();
       // 1. Sende kontroll packet
       // 2. Starte Konsole frage nach Parameter
       // 3. File öffnen und bytes einlesen und in ein FCPacket packen. Wollen wir das File einlesen hier machen?

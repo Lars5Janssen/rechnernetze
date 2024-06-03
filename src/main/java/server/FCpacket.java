@@ -6,6 +6,8 @@ package server;
  Autor: M. Huebner
  */
 
+import java.util.Arrays;
+
 public class FCpacket implements Comparable<FCpacket> {
   /*
    * Data structure for the representation of one data packet with seq num in
@@ -215,4 +217,16 @@ public class FCpacket implements Comparable<FCpacket> {
     }
   }
 
+  @Override
+  public String toString() {
+    return "FCpacket{" +
+            "data=" + Arrays.toString(data) +
+            ", dataLen=" + dataLen +
+            ", seqNumber=" + seqNumber +
+            ", seqNumberBytes=" + Arrays.toString(seqNumberBytes) +
+            ", timer=" + timer +
+            ", validACK=" + validACK +
+            ", timestamp=" + timestamp +
+            '}';
+  }
 }
