@@ -1,4 +1,17 @@
 ## TODOS für Aufgabe 3
+- [ ] threading für das Senden
+  - Bei einem sende vorgang in seq0 ein initialpaket senden
+  - ersten 8 byte enthalten eine sequenznummer welche selbst erstellt werden muss.
+    - PrioQueue nicht gesendete Pakete
+    - bedenke dabei den Timer direkt vor dem senden zu starten
+    - [FCPaket1, 2 ,3, 4] darin laufen die timer
+      - nach ack für spezifische seq. nummer rtt time setzen
+- [ ] rtt algorithmus machen.
+- [ ] threading fürs empfangen
+  - der server sendet die exakte seq nummer des erhaltenen Packets
+  - bei erhalt des packets (ack) timer des FCPacket canceln und zeit und weitere infos in csv schreiben.
+  
+
 
 - [ ] Konsole für den Client
   - Nur übergabe der Quelle und des Ziels. Hostname/Portnummer/Window-Größe und Fehlerrate sind vorrausgesetzt.
