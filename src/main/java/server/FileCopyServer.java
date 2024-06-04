@@ -21,7 +21,7 @@ public class FileCopyServer {
   public final static boolean TEST_OUTPUT_MODE = false;
   public final static int SERVER_PORT = 23000;
   public final static int UDP_PACKET_SIZE = 1008;
-  public final static int CONNECTION_TIMEOUT = 3000; // milliseconds
+  public final static int CONNECTION_TIMEOUT = 30000; // milliseconds
   public final static long DELAY = 10; // Propagation delay in ms
 
   // -------- Parameters (will be adjusted with values in the first packet)
@@ -96,9 +96,10 @@ public class FileCopyServer {
 
           long seqNum = fcReceivePacket.getSeqNum();
           recPacketCounter++;
-          syslog(facility,8,"Before parameter set");
+          syslog(facility,8,"Before parameter set seqNum: " + seqNum);
           // Test on simulated error (packet checksum simulation)
           if ((recPacketCounter % errorRate) == 0) {
+
             testOut("---- Packet " + seqNum + " corrupted! ---------");
           } else {
             testOut("Server: Packet " + seqNum +

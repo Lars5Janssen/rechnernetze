@@ -117,12 +117,30 @@ public class FileCopyClient extends Thread {
     return combined;
   }
 
+  private long makeLong(byte[] buf, int i, int length) {
+    long r = 0;
+    length += i;
+
+    for (int j = i; j < length; j++)
+      r = (r << 8) | (buf[j] & 0xffL);
+
+    return r;
+  }
+
   public void runFileCopyClient() throws Exception {
       File file = new File(sourcePath);
       FileInputStream fileInputStream = new FileInputStream(file);
       long fileSizeInBytes = file.length();
       syslog(facility,1,"FileSize: " + fileSizeInBytes);
+
       FCpacket fcControl = makeControlPacket();
+      syslog(facility,8,"seqNum after makeControlPacket(): " + fcControl.getSeqNum());
+
+      byte[] seqBytes = new byte[8];
+      System.arraycopy(fcControl.getData(), 0, seqBytes, 0, 8);
+      long resultSeq = makeLong(seqBytes, 0, 8);
+      syslog(facility,8,"seqNum nach byte to long convertierung: " + resultSeq);
+
       socket.send(new DatagramPacket(fcControl.getData(), fcControl.getLen(),InetAddress.getLoopbackAddress(),SERVER_PORT));
 
       DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
@@ -150,8 +168,8 @@ public class FileCopyClient extends Thread {
 
         DatagramPacket dataackPacket = new DatagramPacket(buffer, buffer.length);
         socket.receive(dataackPacket);
-        FCpacket fackPacket = new FCpacket(dataackPacket.getData(), dataackPacket.getLength());
-        syslog(facility,8,"Ack Packet: " + fackPacket.toString());
+        String recieve = new String(dataackPacket.getData());
+        syslog(facility,8,"Ack Packet: " + recieve);
       }
       socket.close();
       // 1. Sende kontroll packet
