@@ -8,6 +8,7 @@ package client;
  Lüdeke, Leonhard
  */
 
+import com.google.common.primitives.Bytes;
 import com.google.common.primitives.Longs;
 import server.FC_Timer;
 import server.FCpacket;
@@ -135,12 +136,16 @@ public class FileCopyClient extends Thread {
 
       FCpacket fcControl = makeControlPacket();
       syslog(facility,8,"seqNum after makeControlPacket(): " + fcControl.getSeqNum());
-
+      byte[] testArray = Longs.toByteArray(0);
       byte[] seqBytes = new byte[8];
-      System.arraycopy(fcControl.getData(), 0, seqBytes, 0, 8);
-      long resultSeq = makeLong(seqBytes, 0, 8);
-      syslog(facility,8,"seqNum nach byte to long convertierung: " + resultSeq);
 
+      System.arraycopy(fcControl.getData(), 0, seqBytes, 0, 8);
+      DatagramPacket testPacket = new DatagramPacket(seqBytes, seqBytes.length);
+      long resultSeq = makeLong(seqBytes, 0, 8);
+      long resultTet = makeLong(testArray, 0, 8);
+      syslog(facility,8,"seqNum nach byte to long convertierung: " + resultSeq);
+      syslog(facility,8,"Test bytes. seqNum nach byte to long convertierung: " + resultTet);
+     // FCpacket testPacket = new FCpacket(0,seqBytes,seqBytes.length);
       socket.send(new DatagramPacket(fcControl.getData(), fcControl.getLen(),InetAddress.getLoopbackAddress(),SERVER_PORT));
 
       DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
