@@ -50,6 +50,8 @@ public class FileCopyClient extends Thread {
   // ... ToDo
   private DatagramSocket socket;
 
+  private FileInputStream fileInputStream;
+
   public FCpacket[] sendPuffer; // Sendepuffer mit N Plätzen (N: Window-Größe)
 
   int sendBaseIdx = 0; // spiegelt den idx im sendPuffer wieder (Sequenznummer des ältesten Pakets im Sendepuffer)
@@ -104,47 +106,21 @@ public class FileCopyClient extends Thread {
     return combined;
   }
 
+  private void readFile() {
+    if (sourcePath != null) {
+      File file = new File(sourcePath);
+      try {
+        fileInputStream = new FileInputStream(file);
+      } catch (FileNotFoundException e) {
+        syslog(facility,1,"ERROR: File not Found");
+      }
+    }
+    syslog(facility, 1, "ERROR: SourcePath is Null.");
+  }
 
   public void runFileCopyClient() throws Exception {
-      File file = new File(sourcePath);
-      FileInputStream fileInputStream = new FileInputStream(file);
-      long fileSizeInBytes = file.length();
-      syslog(facility,1,"FileSize: " + fileSizeInBytes);
+      readFile();
 
-      FCpacket fcControl = makeControlPacket();
-
-     // FCpacket testPacket = new FCpacket(0,seqBytes,seqBytes.length);
-      socket.send(new DatagramPacket(fcControl.getSeqNumBytesAndData(), fcControl.getTotalLen(),InetAddress.getLoopbackAddress(),SERVER_PORT));
-
-      DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
-      socket.receive(ackPacket);
-      FCpacket fCpacket = new FCpacket(ackPacket.getData(), ackPacket.getLength());
-      syslog(facility,8,"Ack Packet: " + fCpacket.toString());
-
-      syslog(facility,8,"Initial Packet gesendet.");
-      //Solange bytesFromSourceData noch daten hat
-      while (fileSizeInBytes > 0) {
-        byte[] bytesToSend = new byte[UDP_PACKET_SIZE];
-
-        //bytesToSend befüllen
-        for (int i = 0; i < UDP_PACKET_SIZE; i++) {
-          bytesToSend[i] = (byte)fileInputStream.read();
-        }
-        FCpacket fcPacket = new FCpacket(nextSeqNum,bytesToSend,bytesToSend.length);
-        sendPuffer[nextSeqNum - 1] = fcPacket;
-
-        DatagramPacket sendetData = new DatagramPacket(fcPacket.getData(), UDP_PACKET_SIZE,InetAddress.getLoopbackAddress(),SERVER_PORT);
-
-        fileSizeInBytes -= UDP_PACKET_SIZE;
-        nextSeqNum++;
-        socket.send(sendetData);
-
-        DatagramPacket dataackPacket = new DatagramPacket(buffer, buffer.length);
-        socket.receive(dataackPacket);
-        String recieve = new String(dataackPacket.getData());
-        syslog(facility,8,"Ack Packet: " + recieve);
-      }
-      socket.close();
       // 1. Sende kontroll packet
       // 2. Starte Konsole frage nach Parameter
       // 3. File öffnen und bytes einlesen und in ein FCPacket packen. Wollen wir das File einlesen hier machen?
