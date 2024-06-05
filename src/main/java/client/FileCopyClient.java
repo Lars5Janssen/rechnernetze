@@ -14,6 +14,7 @@ import server.FCpacket;
 import java.io.*;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -75,10 +76,15 @@ public class FileCopyClient extends Thread {
     fileInputStream = openFileInputStream();
     windowSize = Integer.parseInt(windowSizeArg);
     serverErrorRate = Long.parseLong(errorRateArg);
-    socket = new DatagramSocket(SERVER_PORT);
+    socket = new DatagramSocket();
 
-    fileSend = new FileCopyClientSend(UDP_PACKET_SIZE, socket, sendQueue);
-    reviece = new FileCopyClientRecive(UDP_PACKET_SIZE, socket, revieceQueue);
+    try {
+      fileSend = new FileCopyClientSend(UDP_PACKET_SIZE, servername, SERVER_PORT, socket, sendQueue);
+      reviece = new FileCopyClientRecive(UDP_PACKET_SIZE, servername, SERVER_PORT, socket, revieceQueue);
+    } catch (UnknownHostException e) {
+      syslog(facility, 1, "UnknownHost");
+    }
+
     reciveThread = new Thread(reviece);
     fileSendThread = new Thread(fileSend);
     window = new ArrayList<>(windowSize);
