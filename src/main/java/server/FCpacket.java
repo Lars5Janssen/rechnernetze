@@ -4,6 +4,7 @@ package server;
  Version 1.0
  Praktikum Rechnernetze HAW Hamburg
  Autor: M. Huebner
+ Modified by: L. Janssen, L. Lüdeke
  */
 
 import java.util.Arrays;

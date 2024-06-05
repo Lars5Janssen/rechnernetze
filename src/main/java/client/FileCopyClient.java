@@ -14,6 +14,8 @@ import server.FCpacket;
 import java.io.*;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import static syslog.Syslog.syslog;
 
@@ -46,13 +48,15 @@ public class FileCopyClient extends Thread {
 
   private FileInputStream fileInputStream;
 
-  public FCpacket[] sendPuffer; // Sendepuffer mit N Plätzen (N: Window-Größe)
+  private FCpacket[] sendetPackets; // Sendepuffer mit N Plätzen (N: Window-Größe)
 
-  int sendBaseIdx = 0; // spiegelt den idx im sendPuffer wieder (Sequenznummer des ältesten Pakets im Sendepuffer)
+  public final int PACKET_SIZE_WITHOUT_SEQ = UDP_PACKET_SIZE - 8;
 
   int nextSeqNum = 1; // (Sequenznummer des nächsten zu sendenden Pakets)
 
-  private byte[] buffer = new byte[UDP_PACKET_SIZE]; // wirklich die packet size?
+  public BlockingQueue<FCpacket> revieceQueue = new LinkedBlockingQueue<>();
+
+  public BlockingQueue<byte[]> sendQueue = new LinkedBlockingQueue<>();
   
   private String facility = "Client";
 
@@ -65,8 +69,8 @@ public class FileCopyClient extends Thread {
     fileInputStream = openFileInputStream();
     windowSize = Integer.parseInt(windowSizeArg);
     serverErrorRate = Long.parseLong(errorRateArg);
-    socket = new DatagramSocket();
-    sendPuffer = new FCpacket[windowSize];
+    socket = new DatagramSocket(SERVER_PORT);
+    sendetPackets = new FCpacket[windowSize];
   }
 
   private byte intToByte(int x) {
@@ -115,7 +119,26 @@ public class FileCopyClient extends Thread {
   }
 
   public void runFileCopyClient() throws Exception {
+    while (socket.isConnected() && !socket.isClosed()) {
+      FCpacket controlPacket = makeControlPacket();
+      sendQueue.add(controlPacket.getSeqNumBytesAndData());
 
+      FileCopyClientSend fileSend = new FileCopyClientSend(UDP_PACKET_SIZE, socket, sendQueue);
+
+      fileSend.run();
+      FileCopyClientRecive reviece = new FileCopyClientRecive(UDP_PACKET_SIZE, socket, revieceQueue);
+      reviece.run();
+      while (fileInputStream.available() > 0) {
+        byte[] bytesToSend = new byte[PACKET_SIZE_WITHOUT_SEQ];
+
+        //bytesToSend befüllen und die ersten 8 plätze freilassen.
+        for (int i = 7; i < PACKET_SIZE_WITHOUT_SEQ; i++) {
+          bytesToSend[i] = (byte)fileInputStream.read();
+        }
+        sendetPackets[nextSeqNum] = new FCpacket(nextSeqNum,bytesToSend);
+
+      }
+    }
       // 1. Sende kontroll packet
       // 2. Starte Konsole frage nach Parameter
       // 3. File öffnen und bytes einlesen und in ein FCPacket packen. Wollen wir das File einlesen hier machen?
