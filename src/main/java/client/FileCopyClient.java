@@ -20,7 +20,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import static syslog.Syslog.syslog;
 
 public class FileCopyClient extends Thread {
-
+// TODO receive rechtschreibung
   // -------- Constants
   public final static boolean TEST_OUTPUT_MODE = false;
 
