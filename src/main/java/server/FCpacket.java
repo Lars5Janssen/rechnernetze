@@ -25,10 +25,10 @@ public class FCpacket implements Comparable<FCpacket> {
    * Constructor for sending FCpackets. The first <packetLen> bytes of the
    * packetData byte array are copied and a new data byte array is generated.
    */
-  public FCpacket(long seqNum, byte[] packetData, int packetLen) {
-    data = new byte[packetLen];
-    System.arraycopy(packetData, 0, data, 0, packetLen);
-    dataLen = packetLen;
+  public FCpacket(long seqNum, byte[] packetData) {
+    dataLen = packetData.length;
+    data = new byte[dataLen];
+    System.arraycopy(packetData, 0, data, 0, dataLen);
     seqNumber = seqNum;
     writeBytes(seqNum, seqNumberBytes, 0, 8);
   }
@@ -38,10 +38,10 @@ public class FCpacket implements Comparable<FCpacket> {
    * are treated as the sequence number. The other <packetLen-8> bytes of the
    * packetData byte array are copied and a new data byte array is generated.
    */
-  public FCpacket(byte[] packetData, int packetLen) {
+  public FCpacket(byte[] packetData) {
     seqNumberBytes = reduce(packetData, 0, 8);
-    data = reduce(packetData, 8, packetLen - 8);
-    dataLen = packetLen - 8;
+    dataLen = packetData.length - 8;
+    data = reduce(packetData, 8, dataLen);
     seqNumber = makeLong(seqNumberBytes, 0, 8);
   }
 

@@ -183,7 +183,7 @@ public class FileCopyClient extends Thread {
     } catch (UnsupportedEncodingException e) {
       e.printStackTrace();
     }
-    return new FCpacket(0, sendData, sendData.length);
+    return new FCpacket(0, sendData);
   }
 
   public void testOut(String out) {

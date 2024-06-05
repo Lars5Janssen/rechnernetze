@@ -2,6 +2,8 @@ package client;
 
 import server.FCpacket;
 
+import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.concurrent.BlockingQueue;
@@ -24,6 +26,16 @@ public class FileCopyClientRecive implements Runnable{
 
     @Override
     public void run() {
+        while (true) {
+            DatagramPacket receivedPacket = new DatagramPacket(new byte[UDP_PACKET_SIZE], UDP_PACKET_SIZE);
+            try {
+                socket.receive(receivedPacket);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+            FCpacket fCpacket = new FCpacket(receivedPacket.getData());
+            queue.add(fCpacket);
 
+        }
     }
 }

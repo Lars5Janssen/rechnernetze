@@ -1,7 +1,5 @@
 package client;
 
-import server.FCpacket;
-
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;

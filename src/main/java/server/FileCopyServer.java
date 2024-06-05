@@ -91,8 +91,7 @@ public class FileCopyServer {
         if ((clientAdress.equals(receivedIPAddress)) &&
               (clientPort == receivedPort)) {
           // extract sequence number and data
-          fcReceivePacket = new FCpacket(udpReceivePacket.getData(),
-                                         udpReceivePacket.getLength());
+          fcReceivePacket = new FCpacket(udpReceivePacket.getData());
 
           long seqNum = fcReceivePacket.getSeqNum();
           recPacketCounter++;
