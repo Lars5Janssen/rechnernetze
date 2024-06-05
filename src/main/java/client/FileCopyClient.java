@@ -118,16 +118,22 @@ public class FileCopyClient extends Thread {
     return null;
   }
 
+  private void startThreads() {
+    FileCopyClientSend fileSend = new FileCopyClientSend(UDP_PACKET_SIZE, socket, sendQueue);
+    FileCopyClientRecive reviece = new FileCopyClientRecive(UDP_PACKET_SIZE, socket, revieceQueue);
+    Thread reciveThread = new Thread(reviece);
+    Thread fileSendThread = new Thread(fileSend);
+    reciveThread.start();
+    fileSendThread.start();
+  }
+
   public void runFileCopyClient() throws Exception {
+    startThreads();
+
     while (socket.isConnected() && !socket.isClosed()) {
       FCpacket controlPacket = makeControlPacket();
       sendQueue.add(controlPacket.getSeqNumBytesAndData());
 
-      FileCopyClientSend fileSend = new FileCopyClientSend(UDP_PACKET_SIZE, socket, sendQueue);
-
-      fileSend.run();
-      FileCopyClientRecive reviece = new FileCopyClientRecive(UDP_PACKET_SIZE, socket, revieceQueue);
-      reviece.run();
       while (fileInputStream.available() > 0) {
         byte[] bytesToSend = new byte[PACKET_SIZE_WITHOUT_SEQ];
 
