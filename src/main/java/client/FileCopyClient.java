@@ -8,18 +8,12 @@ package client;
  Lüdeke, Leonhard
  */
 
-import com.google.common.primitives.Bytes;
-import com.google.common.primitives.Longs;
 import server.FC_Timer;
 import server.FCpacket;
 
 import java.io.*;
-import java.net.DatagramPacket;
 import java.net.DatagramSocket;
-import java.net.InetAddress;
 import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 import static syslog.Syslog.syslog;
 
@@ -68,6 +62,7 @@ public class FileCopyClient extends Thread {
     servername = serverArg;
     sourcePath = sourcePathArg;
     destPath = destPathArg;
+    fileInputStream = openFileInputStream();
     windowSize = Integer.parseInt(windowSizeArg);
     serverErrorRate = Long.parseLong(errorRateArg);
     socket = new DatagramSocket();
@@ -106,20 +101,20 @@ public class FileCopyClient extends Thread {
     return combined;
   }
 
-  private void readFile() {
+  private FileInputStream openFileInputStream() {
     if (sourcePath != null) {
       File file = new File(sourcePath);
       try {
-        fileInputStream = new FileInputStream(file);
+        return new FileInputStream(file);
       } catch (FileNotFoundException e) {
         syslog(facility,1,"ERROR: File not Found");
       }
     }
     syslog(facility, 1, "ERROR: SourcePath is Null.");
+    return null;
   }
 
   public void runFileCopyClient() throws Exception {
-      readFile();
 
       // 1. Sende kontroll packet
       // 2. Starte Konsole frage nach Parameter
