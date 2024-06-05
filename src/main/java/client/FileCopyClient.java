@@ -76,20 +76,6 @@ public class FileCopyClient extends Thread {
     return (byte) (x & 0xFF);
   }
 
-  private void sendInitialPacket() {
-    byte[] dest = destPath.getBytes(StandardCharsets.UTF_8);
-    byte window = intToByte(windowSize);
-    byte[] errorRate = Longs.toByteArray(serverErrorRate);
-    byte[] params = combineArrays(dest, window, errorRate);
-    FCpacket fCpacketTmp = new FCpacket(0,params,params.length);
-    DatagramPacket initialPacket = new DatagramPacket(fCpacketTmp.getData(),params.length,InetAddress.getLoopbackAddress(),SERVER_PORT);
-    try {
-      socket.send(initialPacket);
-    } catch (IOException e) {
-      syslog(facility, 1, "Could not send initial packet");
-    }
-  }
-
   /**
    * Kombiniert die drei Eingaben in ein einzelnes Byte-Array mit Semikolons als Trennzeichen.
    *
@@ -118,15 +104,6 @@ public class FileCopyClient extends Thread {
     return combined;
   }
 
-  private long makeLong(byte[] buf, int i, int length) {
-    long r = 0;
-    length += i;
-
-    for (int j = i; j < length; j++)
-      r = (r << 8) | (buf[j] & 0xffL);
-
-    return r;
-  }
 
   public void runFileCopyClient() throws Exception {
       File file = new File(sourcePath);
@@ -135,18 +112,9 @@ public class FileCopyClient extends Thread {
       syslog(facility,1,"FileSize: " + fileSizeInBytes);
 
       FCpacket fcControl = makeControlPacket();
-      syslog(facility,8,"seqNum after makeControlPacket(): " + fcControl.getSeqNum());
-      byte[] testArray = Longs.toByteArray(0);
-      byte[] seqBytes = new byte[8];
 
-      System.arraycopy(fcControl.getData(), 0, seqBytes, 0, 8);
-      DatagramPacket testPacket = new DatagramPacket(seqBytes, seqBytes.length);
-      long resultSeq = makeLong(seqBytes, 0, 8);
-      long resultTet = makeLong(testArray, 0, 8);
-      syslog(facility,8,"seqNum nach byte to long convertierung: " + resultSeq);
-      syslog(facility,8,"Test bytes. seqNum nach byte to long convertierung: " + resultTet);
      // FCpacket testPacket = new FCpacket(0,seqBytes,seqBytes.length);
-      socket.send(new DatagramPacket(fcControl.getData(), fcControl.getLen(),InetAddress.getLoopbackAddress(),SERVER_PORT));
+      socket.send(new DatagramPacket(fcControl.getSeqNumBytesAndData(), fcControl.getLen(),InetAddress.getLoopbackAddress(),SERVER_PORT));
 
       DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
       socket.receive(ackPacket);
@@ -233,6 +201,7 @@ public class FileCopyClient extends Thread {
      (0 destPath ; windowSize ; errorRate) */
     String sendString = destPath + ";" + windowSize + ";" + serverErrorRate;
     byte[] sendData = null;
+    syslog(facility, 8, "SendString: " + sendString);
     try {
       sendData = sendString.getBytes("UTF-8");
     } catch (UnsupportedEncodingException e) {

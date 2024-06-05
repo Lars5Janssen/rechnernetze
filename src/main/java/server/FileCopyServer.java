@@ -223,6 +223,7 @@ public class FileCopyServer {
 
   private boolean setParameters(FCpacket controlPacket) {
     /* Evaluate packet with seqNum 0 */
+
     String parameters = "";
     String[] parameterArray;
 
@@ -232,6 +233,7 @@ public class FileCopyServer {
       e.printStackTrace();
     }
 
+    syslog(facility,8,"parameter: "+ parameters);
     // Extract parameters
     parameterArray = parameters.split(";");
 
