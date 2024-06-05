@@ -14,6 +14,7 @@ import server.FCpacket;
 import java.io.*;
 import java.net.DatagramSocket;
 import java.net.SocketException;
+import java.util.ArrayList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -48,17 +49,22 @@ public class FileCopyClient extends Thread {
 
   private FileInputStream fileInputStream;
 
-  private FCpacket[] sendetPackets; // Sendepuffer mit N Plätzen (N: Window-Größe)
+  private ArrayList<FCpacket> window; // Sendepuffer mit N Plätzen (N: Window-Größe)
 
   public final int PACKET_SIZE_WITHOUT_SEQ = UDP_PACKET_SIZE - 8;
 
-  int nextSeqNum = 1; // (Sequenznummer des nächsten zu sendenden Pakets)
+  int seqNum = 1;
+
+  private String facility = "Client";
 
   public BlockingQueue<FCpacket> revieceQueue = new LinkedBlockingQueue<>();
 
   public BlockingQueue<byte[]> sendQueue = new LinkedBlockingQueue<>();
-  
-  private String facility = "Client";
+
+  private FileCopyClientSend fileSend;
+  private FileCopyClientRecive reviece;
+  private Thread reciveThread;
+  private Thread fileSendThread;
 
   // Constructor
   public FileCopyClient(String serverArg, String sourcePathArg,
@@ -70,7 +76,12 @@ public class FileCopyClient extends Thread {
     windowSize = Integer.parseInt(windowSizeArg);
     serverErrorRate = Long.parseLong(errorRateArg);
     socket = new DatagramSocket(SERVER_PORT);
-    sendetPackets = new FCpacket[windowSize];
+
+    fileSend = new FileCopyClientSend(UDP_PACKET_SIZE, socket, sendQueue);
+    reviece = new FileCopyClientRecive(UDP_PACKET_SIZE, socket, revieceQueue);
+    reciveThread = new Thread(reviece);
+    fileSendThread = new Thread(fileSend);
+    window = new ArrayList<>(windowSize);
   }
 
   private byte intToByte(int x) {
@@ -118,41 +129,41 @@ public class FileCopyClient extends Thread {
     return null;
   }
 
-  private void startThreads() {
-    FileCopyClientSend fileSend = new FileCopyClientSend(UDP_PACKET_SIZE, socket, sendQueue);
-    FileCopyClientRecive reviece = new FileCopyClientRecive(UDP_PACKET_SIZE, socket, revieceQueue);
-    Thread reciveThread = new Thread(reviece);
-    Thread fileSendThread = new Thread(fileSend);
-    reciveThread.start();
-    fileSendThread.start();
+  private boolean threadsNotInterrupted() {
+    return !reciveThread.isInterrupted() && !fileSendThread.isInterrupted();
+  }
+
+  private boolean threadsAlive() {
+    return reciveThread.isAlive() && fileSendThread.isAlive();
   }
 
   public void runFileCopyClient() throws Exception {
-    startThreads();
+    reciveThread.start();
+    fileSendThread.start();
 
-    while (socket.isConnected() && !socket.isClosed()) {
-      FCpacket controlPacket = makeControlPacket();
-      sendQueue.add(controlPacket.getSeqNumBytesAndData());
+    FCpacket controlPacket = makeControlPacket();
+    sendQueue.add(controlPacket.getSeqNumBytesAndData());
 
-      while (fileInputStream.available() > 0) {
+    while (socket.isConnected() && !socket.isClosed()
+            && threadsNotInterrupted()
+            && threadsAlive()) {
+
+      if (fileInputStream.available() > 0 && window.size() < windowSize) {
         byte[] bytesToSend = new byte[PACKET_SIZE_WITHOUT_SEQ];
 
-        //bytesToSend befüllen und die ersten 8 plätze freilassen.
-        for (int i = 7; i < PACKET_SIZE_WITHOUT_SEQ; i++) {
+        //bytesToSend befüllen => bis 1000 bytes
+        for (int i = 0; i < PACKET_SIZE_WITHOUT_SEQ; i++) {
           bytesToSend[i] = (byte)fileInputStream.read();
         }
-        sendetPackets[nextSeqNum] = new FCpacket(nextSeqNum,bytesToSend);
+        FCpacket packetToSend = new FCpacket(seqNum,bytesToSend);
+        window.add(packetToSend);
+
+        sendQueue.add(packetToSend.getSeqNumBytesAndData());
 
       }
+
     }
-      // 1. Sende kontroll packet
-      // 2. Starte Konsole frage nach Parameter
-      // 3. File öffnen und bytes einlesen und in ein FCPacket packen. Wollen wir das File einlesen hier machen?
-      // 4. Timer starten
-      // 5. senden (loop)
-      // 6. nach ack Timer stoppen
-      // 7. connection close
-      // ToDo!!
+
   }
 
   /**
