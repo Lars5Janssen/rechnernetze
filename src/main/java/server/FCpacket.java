@@ -95,6 +95,8 @@ public class FCpacket implements Comparable<FCpacket> {
     return concatenate(seqNumberBytes, data);
   }
 
+  public int getTotalLen() { return dataLen + seqNumberBytes.length; }
+
   /**
    * Returns the timestamp
    */
