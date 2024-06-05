@@ -114,7 +114,7 @@ public class FileCopyClient extends Thread {
       FCpacket fcControl = makeControlPacket();
 
      // FCpacket testPacket = new FCpacket(0,seqBytes,seqBytes.length);
-      socket.send(new DatagramPacket(fcControl.getSeqNumBytesAndData(), fcControl.getLen(),InetAddress.getLoopbackAddress(),SERVER_PORT));
+      socket.send(new DatagramPacket(fcControl.getSeqNumBytesAndData(), fcControl.getTotalLen(),InetAddress.getLoopbackAddress(),SERVER_PORT));
 
       DatagramPacket ackPacket = new DatagramPacket(buffer, buffer.length);
       socket.receive(ackPacket);
