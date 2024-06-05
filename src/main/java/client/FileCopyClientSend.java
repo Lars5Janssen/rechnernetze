@@ -14,21 +14,10 @@ public class FileCopyClientSend implements Runnable {
     private final InetAddress SERVER_IP;
     private final int SERVER_PORT;
 
-    public FileCopyClientSend(int UDP_PACKET_SIZE, String SERVER_IP, int SERVER_PORT, DatagramSocket socket, BlockingQueue<byte[]> queue ) throws UnknownHostException {
-        this(UDP_PACKET_SIZE, InetAddress.getByName(SERVER_IP), SERVER_PORT, socket, queue);
-    }
-    public FileCopyClientSend(int UDP_PACKET_SIZE, byte[] SERVER_IP, int SERVER_PORT, DatagramSocket socket, BlockingQueue<byte[]> queue ) throws UnknownHostException {
-        this(UDP_PACKET_SIZE, InetAddress.getByAddress(SERVER_IP), SERVER_PORT, socket, queue);
-    }
-
-    public FileCopyClientSend(int UDP_PACKET_SIZE, int SERVER_PORT, DatagramSocket socket, BlockingQueue<byte[]> queue ) {
-        this(UDP_PACKET_SIZE, InetAddress.getLoopbackAddress(), SERVER_PORT, socket, queue);
-    }
-
-    public FileCopyClientSend(int UDP_PACKET_SIZE, InetAddress SERVER_IP, int SERVER_PORT, DatagramSocket socket, BlockingQueue<byte[]> queue) {
+    public FileCopyClientSend(int UDP_PACKET_SIZE, DatagramSocket socket, BlockingQueue<byte[]> queue) {
         this.UDP_PACKET_SIZE = UDP_PACKET_SIZE;
-        this.SERVER_IP = SERVER_IP;
-        this.SERVER_PORT = SERVER_PORT;
+        this.SERVER_IP = socket.getInetAddress();
+        this.SERVER_PORT = socket.getPort();
         this.socket = socket;
         this.queue = queue;
     }
