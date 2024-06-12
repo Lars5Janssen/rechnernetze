@@ -7,6 +7,8 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.concurrent.BlockingQueue;
 
+import static syslog.Syslog.syslog;
+
 public class FileCopyClientSend implements Runnable {
     private DatagramSocket socket;
     private BlockingQueue<byte[]> queue;
@@ -32,7 +34,8 @@ public class FileCopyClientSend implements Runnable {
             byte[] packet;
             try {
                 packet = queue.take();
-                socket.send(new DatagramPacket(packet, 0, packet.length, SERVER_IP, SERVER_PORT));
+                socket.send(new DatagramPacket(packet, packet.length, SERVER_IP, SERVER_PORT));
+                syslog("SEND",8,"Sent Packet");
             } catch (InterruptedException | IOException e) {
                 throw new RuntimeException(e);
             }

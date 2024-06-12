@@ -150,23 +150,24 @@ public class FileCopyClient extends Thread {
     FCpacket controlPacket = makeControlPacket();
     sendQueue.add(controlPacket.getSeqNumBytesAndData());
 
-    while (socket.isConnected() && !socket.isClosed()
-            && threadsNotInterrupted()
-            && threadsAlive()) {
+    while (threadsNotInterrupted() && threadsAlive()) {
+      if (fileInputStream.available() > 0 && window.size() < windowSize) { // Send block
+        byte[] arrrr = fileInputStream.readAllBytes();
 
-      if (fileInputStream.available() > 0 && window.size() < windowSize) {
-        byte[] bytesToSend = new byte[PACKET_SIZE_WITHOUT_SEQ];
+        sendQueue.add(new FCpacket(1L,arrrr, arrrr.length).getSeqNumBytesAndData());
+        //byte[] bytesToSend = new byte[PACKET_SIZE_WITHOUT_SEQ];
 
-        //bytesToSend befüllen => bis 1000 bytes
-        for (int i = 0; i < PACKET_SIZE_WITHOUT_SEQ; i++) {
-          bytesToSend[i] = (byte)fileInputStream.read();
-        }
-        FCpacket packetToSend = new FCpacket(seqNum,bytesToSend);
-        window.add(packetToSend);
+        ////bytesToSend befüllen => bis 1000 bytes
+        //for (int i = 0; i < PACKET_SIZE_WITHOUT_SEQ; i++) {
+        //  bytesToSend[i] = (byte)fileInputStream.read();
+        //}
+        //FCpacket packetToSend = new FCpacket(seqNum,bytesToSend);
+        //window.add(packetToSend);
 
-        sendQueue.add(packetToSend.getSeqNumBytesAndData());
+        //sendQueue.add(packetToSend.getSeqNumBytesAndData());
 
       }
+      // Manage window block
 
     }
 
@@ -218,13 +219,13 @@ public class FileCopyClient extends Thread {
      (0 destPath ; windowSize ; errorRate) */
     String sendString = destPath + ";" + windowSize + ";" + serverErrorRate;
     byte[] sendData = null;
-    syslog(facility, 8, "SendString: " + sendString);
+    syslog(facility, 8, "Making Controllpackage with string of: " + sendString);
     try {
       sendData = sendString.getBytes("UTF-8");
     } catch (UnsupportedEncodingException e) {
       e.printStackTrace();
     }
-    return new FCpacket(0, sendData);
+    return new FCpacket(0, sendData, sendData.length);
   }
 
   public void testOut(String out) {

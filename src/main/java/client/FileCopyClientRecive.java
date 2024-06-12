@@ -38,7 +38,7 @@ public class FileCopyClientRecive implements Runnable{
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-            FCpacket fCpacket = new FCpacket(receivedPacket.getData());
+            FCpacket fCpacket = new FCpacket(receivedPacket.getData(), receivedPacket.getLength());
             queue.add(fCpacket);
 
         }

@@ -13,15 +13,13 @@ import java.net.*;
 import java.util.Collections;
 import java.util.LinkedList;
 
-import static syslog.Syslog.syslog;
-
 
 public class FileCopyServer {
   // -------- Constants
   public final static boolean TEST_OUTPUT_MODE = false;
   public final static int SERVER_PORT = 23000;
   public final static int UDP_PACKET_SIZE = 1008;
-  public final static int CONNECTION_TIMEOUT = 30000; // milliseconds
+  public final static int CONNECTION_TIMEOUT = 3000; // milliseconds
   public final static long DELAY = 10; // Propagation delay in ms
 
   // -------- Parameters (will be adjusted with values in the first packet)
@@ -47,9 +45,6 @@ public class FileCopyServer {
   // Test error production
   private long recPacketCounter;
 
-  // For Syslog
-  private String facility = "Server";
-
   // Constructor
   public FileCopyServer() {
     receiveData = new byte[UDP_PACKET_SIZE];
@@ -71,7 +66,6 @@ public class FileCopyServer {
         udpReceivePacket = new DatagramPacket(receiveData, UDP_PACKET_SIZE);
         // Wait for data packet
         serverSocket.receive(udpReceivePacket);
-        syslog(facility,8,"Packet recieved.");
         receivedIPAddress = udpReceivePacket.getAddress();
         receivedPort = udpReceivePacket.getPort();
 
@@ -91,14 +85,14 @@ public class FileCopyServer {
         if ((clientAdress.equals(receivedIPAddress)) &&
               (clientPort == receivedPort)) {
           // extract sequence number and data
-          fcReceivePacket = new FCpacket(udpReceivePacket.getData());
+          fcReceivePacket = new FCpacket(udpReceivePacket.getData(),
+                                         udpReceivePacket.getLength());
 
           long seqNum = fcReceivePacket.getSeqNum();
           recPacketCounter++;
-          syslog(facility,8,"Before parameter set seqNum: " + seqNum);
+
           // Test on simulated error (packet checksum simulation)
           if ((recPacketCounter % errorRate) == 0) {
-
             testOut("---- Packet " + seqNum + " corrupted! ---------");
           } else {
             testOut("Server: Packet " + seqNum +
@@ -107,9 +101,7 @@ public class FileCopyServer {
 
             // Handle first packet --> read and set parameters
             if (seqNum == 0) {
-              syslog(facility,1,"Inside if statement seqNum == 0");
               if (setParameters(fcReceivePacket)) {
-                syslog(facility,1,"DestPath: " + destPath);
                 // open destination file
                 outToFile = new FileOutputStream(destPath);
               } else {
@@ -132,8 +124,7 @@ public class FileCopyServer {
             }
           }
         }
-      } catch (SocketTimeoutException e) {
-        e.printStackTrace();
+      } catch (java.net.SocketTimeoutException e) {
         // Copy job successfully finished
         outToFile.close();
         connectionEstablished = false;
@@ -209,7 +200,7 @@ public class FileCopyServer {
 
   private void writePacket(FCpacket deliverPacket) throws IOException {
     /* Deliver single FCpacket: append packet data to outfile */
-    syslog(facility,8,deliverPacket.toString());
+
     // Packet 0 is control packet --> don't write to file!
     if (deliverPacket.getSeqNum() > 0) {
       outToFile.write(deliverPacket.getData(), 0, deliverPacket.getLen());
@@ -222,7 +213,6 @@ public class FileCopyServer {
 
   private boolean setParameters(FCpacket controlPacket) {
     /* Evaluate packet with seqNum 0 */
-
     String parameters = "";
     String[] parameterArray;
 
@@ -232,16 +222,16 @@ public class FileCopyServer {
       e.printStackTrace();
     }
 
-    syslog(facility,8,"parameter: "+ parameters);
     // Extract parameters
     parameterArray = parameters.split(";");
+
     if (parameterArray.length == 3) {
       // Adjust parameters
       destPath = parameterArray[0];
 
       try {
         windowSize = Integer.parseInt(parameterArray[1]);
-        errorRate = Long.parseLong(parameterArray[2]); // 1000;
+        errorRate = Long.parseLong(parameterArray[2]);
       } catch (NumberFormatException e) {
         System.err.println("Control Packet (seqNum 0): syntax error! No numeric parameter found: " +
                            parameters);

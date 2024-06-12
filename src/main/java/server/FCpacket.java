@@ -4,10 +4,7 @@ package server;
  Version 1.0
  Praktikum Rechnernetze HAW Hamburg
  Autor: M. Huebner
- Modified by: L. Janssen, L. Lüdeke
  */
-
-import java.util.Arrays;
 
 public class FCpacket implements Comparable<FCpacket> {
   /*
@@ -26,10 +23,10 @@ public class FCpacket implements Comparable<FCpacket> {
    * Constructor for sending FCpackets. The first <packetLen> bytes of the
    * packetData byte array are copied and a new data byte array is generated.
    */
-  public FCpacket(long seqNum, byte[] packetData) {
-    dataLen = packetData.length;
-    data = new byte[dataLen];
-    System.arraycopy(packetData, 0, data, 0, dataLen);
+  public FCpacket(long seqNum, byte[] packetData, int packetLen) {
+    data = new byte[packetLen];
+    System.arraycopy(packetData, 0, data, 0, packetLen);
+    dataLen = packetLen;
     seqNumber = seqNum;
     writeBytes(seqNum, seqNumberBytes, 0, 8);
   }
@@ -39,10 +36,10 @@ public class FCpacket implements Comparable<FCpacket> {
    * are treated as the sequence number. The other <packetLen-8> bytes of the
    * packetData byte array are copied and a new data byte array is generated.
    */
-  public FCpacket(byte[] packetData) {
+  public FCpacket(byte[] packetData, int packetLen) {
     seqNumberBytes = reduce(packetData, 0, 8);
-    dataLen = packetData.length - 8;
-    data = reduce(packetData, 8, dataLen);
+    data = reduce(packetData, 8, packetLen - 8);
+    dataLen = packetLen - 8;
     seqNumber = makeLong(seqNumberBytes, 0, 8);
   }
 
@@ -95,8 +92,6 @@ public class FCpacket implements Comparable<FCpacket> {
   public byte[] getSeqNumBytesAndData() {
     return concatenate(seqNumberBytes, data);
   }
-
-  public int getTotalLen() { return dataLen + seqNumberBytes.length; }
 
   /**
    * Returns the timestamp
@@ -220,16 +215,4 @@ public class FCpacket implements Comparable<FCpacket> {
     }
   }
 
-  @Override
-  public String toString() {
-    return "FCpacket{" +
-            "data=" + Arrays.toString(data) +
-            "\n, dataLen=" + dataLen +
-            "\n, seqNumber=" + seqNumber +
-            "\n, seqNumberBytes=" + Arrays.toString(seqNumberBytes) +
-            "\n, timer=" + timer +
-            "\n, validACK=" + validACK +
-            "\n, timestamp=" + timestamp +
-            '}';
-  }
 }
