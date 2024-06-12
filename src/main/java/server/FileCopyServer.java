@@ -107,7 +107,7 @@ public class FileCopyServer {
 
             // Handle first packet --> read and set parameters
             if (seqNum == 0) {
-              syslog(facility,1,"Get seqNumber zero.");
+              syslog(facility,1,"Inside if statement seqNum == 0");
               if (setParameters(fcReceivePacket)) {
                 syslog(facility,1,"DestPath: " + destPath);
                 // open destination file
@@ -235,14 +235,13 @@ public class FileCopyServer {
     syslog(facility,8,"parameter: "+ parameters);
     // Extract parameters
     parameterArray = parameters.split(";");
-
     if (parameterArray.length == 3) {
       // Adjust parameters
       destPath = parameterArray[0];
 
       try {
         windowSize = Integer.parseInt(parameterArray[1]);
-        errorRate = Long.parseLong(parameterArray[2]);
+        errorRate = Long.parseLong(parameterArray[2]); // 1000;
       } catch (NumberFormatException e) {
         System.err.println("Control Packet (seqNum 0): syntax error! No numeric parameter found: " +
                            parameters);

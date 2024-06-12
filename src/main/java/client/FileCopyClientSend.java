@@ -32,7 +32,7 @@ public class FileCopyClientSend implements Runnable {
             byte[] packet;
             try {
                 packet = queue.take();
-                socket.send(new DatagramPacket(packet, UDP_PACKET_SIZE, SERVER_IP, SERVER_PORT));
+                socket.send(new DatagramPacket(packet, 0, packet.length, SERVER_IP, SERVER_PORT));
             } catch (InterruptedException | IOException e) {
                 throw new RuntimeException(e);
             }

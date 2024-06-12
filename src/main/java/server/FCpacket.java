@@ -224,12 +224,12 @@ public class FCpacket implements Comparable<FCpacket> {
   public String toString() {
     return "FCpacket{" +
             "data=" + Arrays.toString(data) +
-            ", dataLen=" + dataLen +
-            ", seqNumber=" + seqNumber +
-            ", seqNumberBytes=" + Arrays.toString(seqNumberBytes) +
-            ", timer=" + timer +
-            ", validACK=" + validACK +
-            ", timestamp=" + timestamp +
+            "\n, dataLen=" + dataLen +
+            "\n, seqNumber=" + seqNumber +
+            "\n, seqNumberBytes=" + Arrays.toString(seqNumberBytes) +
+            "\n, timer=" + timer +
+            "\n, validACK=" + validACK +
+            "\n, timestamp=" + timestamp +
             '}';
   }
 }
