@@ -29,6 +29,7 @@ public class FileCopyClient extends Thread {
   public final int SERVER_PORT = 23000;
 
   public final int UDP_PACKET_SIZE = 1008;
+  public final long TIMEOUT = 1000;
 
   // -------- Public parms
   public String servername;
@@ -43,7 +44,7 @@ public class FileCopyClient extends Thread {
 
   // -------- Variables
   // current default timeout in nanoseconds
-  private long timeoutValue = 100000000L;
+  private long timeoutValue = 10000000L;
 
   // ... ToDo
   private DatagramSocket socket;
@@ -165,6 +166,7 @@ public class FileCopyClient extends Thread {
 
         FCpacket packetToSend = new FCpacket(currentSequenceNumber,fileInputArray, fileInputArray.length);
         sendQueue.add(packetToSend.getSeqNumBytesAndData());
+        startTimer(packetToSend);
         currentSequenceNumber++;
         window.add(packetToSend);
       }
@@ -176,19 +178,19 @@ public class FileCopyClient extends Thread {
 
         for (FCpacket packet : window) {
           if (packet.equals(receivedPacket)) {
-            removePacket = true;
+            cancelTimer(packet);
             syslog(facility,8, "Got ACK for: " + receivedPacket.getSeqNum());
+            window.remove(packet);
+            break;
           }
         }
-
-        if (removePacket) window.remove(receivedPacket);
-
-        for (FCpacket packet : window) {
-          seqInWindow.append(packet.getSeqNum() + ", ");
+        for (FCpacket packet2 : window) {
+          seqInWindow.append(packet2.getSeqNum() + ", ");
         }
         syslog(facility,8, "Window: " + seqInWindow.toString());
 
       }
+
       if (fileInputStream.available() == 0 && window.isEmpty()) {
         reciveThread.interrupt();
         fileSendThread.interrupt();
@@ -210,7 +212,7 @@ public class FileCopyClient extends Thread {
 
   public void cancelTimer(FCpacket packet) {
     /* Cancel timer for the given FCpacket */
-    testOut("Cancel Timer for packet" + packet.getSeqNum());
+    syslog(facility,8,"Cancel Timer for packet" + packet.getSeqNum());
 
     if (packet.getTimer() != null) {
       packet.getTimer().interrupt();
@@ -222,7 +224,13 @@ public class FileCopyClient extends Thread {
    * TODO Selective Repeat Verfahren
    */
   public void timeoutTask(long seqNum) {
-  // ToDo
+    syslog(facility,8,"OhWeee TiMeOuT: " + seqNum);
+    for (FCpacket packet : window) {
+      startTimer(packet);
+      if (packet.getSeqNum() == seqNum) {
+        sendQueue.add(packet.getSeqNumBytesAndData());
+      }
+    }
   }
 
 
