@@ -1,3 +1,4 @@
+/src/main/java/resources/result.txt
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar

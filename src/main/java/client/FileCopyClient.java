@@ -135,13 +135,13 @@ public class FileCopyClient extends Thread {
     return null;
   }
 
-  private boolean threadsNotInterrupted() {
-    return !reciveThread.isInterrupted() && !fileSendThread.isInterrupted();
+  private boolean threadsAlive() {
+    return reciveThread.isAlive() &&
+            fileSendThread.isAlive() &&
+            !reciveThread.isInterrupted() &&
+            !fileSendThread.isInterrupted();
   }
 
-  private boolean threadsAlive() {
-    return reciveThread.isAlive() && fileSendThread.isAlive();
-  }
 
   public void runFileCopyClient() throws Exception {
     reciveThread.start();
@@ -149,26 +149,51 @@ public class FileCopyClient extends Thread {
 
     FCpacket controlPacket = makeControlPacket();
     sendQueue.add(controlPacket.getSeqNumBytesAndData());
+    long currentSequenceNumber = 1;
 
-    while (threadsNotInterrupted() && threadsAlive()) {
+    while (threadsAlive()) {
+
       if (fileInputStream.available() > 0 && window.size() < windowSize) { // Send block
-        byte[] arrrr = fileInputStream.readAllBytes();
+        int availableBytes = fileInputStream.available();
+        byte[] fileInputArray;
 
-        sendQueue.add(new FCpacket(1L,arrrr, arrrr.length).getSeqNumBytesAndData());
-        //byte[] bytesToSend = new byte[PACKET_SIZE_WITHOUT_SEQ];
+        if (availableBytes > UDP_PACKET_SIZE - 8) {
+          fileInputArray = fileInputStream.readNBytes(UDP_PACKET_SIZE - 8);
+        } else {
+          fileInputArray = fileInputStream.readAllBytes();
+        }
 
-        ////bytesToSend befüllen => bis 1000 bytes
-        //for (int i = 0; i < PACKET_SIZE_WITHOUT_SEQ; i++) {
-        //  bytesToSend[i] = (byte)fileInputStream.read();
-        //}
-        //FCpacket packetToSend = new FCpacket(seqNum,bytesToSend);
-        //window.add(packetToSend);
-
-        //sendQueue.add(packetToSend.getSeqNumBytesAndData());
-
+        FCpacket packetToSend = new FCpacket(currentSequenceNumber,fileInputArray, fileInputArray.length);
+        sendQueue.add(packetToSend.getSeqNumBytesAndData());
+        currentSequenceNumber++;
+        window.add(packetToSend);
       }
       // Manage window block
+      if (!revieceQueue.isEmpty()) {
+        FCpacket receivedPacket = revieceQueue.take();
+        boolean removePacket = false;
+        StringBuilder seqInWindow = new StringBuilder();
 
+        for (FCpacket packet : window) {
+          if (packet.equals(receivedPacket)) {
+            removePacket = true;
+            syslog(facility,8, "Got ACK for: " + receivedPacket.getSeqNum());
+          }
+        }
+
+        if (removePacket) window.remove(receivedPacket);
+
+        for (FCpacket packet : window) {
+          seqInWindow.append(packet.getSeqNum() + ", ");
+        }
+        syslog(facility,8, "Window: " + seqInWindow.toString());
+
+      }
+      if (fileInputStream.available() == 0 && window.isEmpty()) {
+        reciveThread.interrupt();
+        fileSendThread.interrupt();
+        socket.close();
+      }
     }
 
   }
