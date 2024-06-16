@@ -1,5 +1,5 @@
-/src/main/java/resources/result.txt
 .gradle
+src/main/resources/result.txt
 build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
