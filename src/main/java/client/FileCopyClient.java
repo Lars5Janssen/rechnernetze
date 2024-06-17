@@ -55,8 +55,6 @@ public class FileCopyClient extends Thread {
 
   public final int PACKET_SIZE_WITHOUT_SEQ = UDP_PACKET_SIZE - 8;
 
-  int seqNum = 1;
-
   private String facility = "Client";
 
   public BlockingQueue<FCpacket> revieceQueue = new LinkedBlockingQueue<>();
@@ -64,7 +62,7 @@ public class FileCopyClient extends Thread {
   public BlockingQueue<byte[]> sendQueue = new LinkedBlockingQueue<>();
 
   private FileCopyClientSend fileSend;
-  private FileCopyClientRecive reviece;
+  private FileCopyClientReceive receive;
   private Thread reciveThread;
   private Thread fileSendThread;
 
@@ -81,12 +79,12 @@ public class FileCopyClient extends Thread {
 
     try {
       fileSend = new FileCopyClientSend(UDP_PACKET_SIZE, servername, SERVER_PORT, socket, sendQueue);
-      reviece = new FileCopyClientRecive(UDP_PACKET_SIZE, servername, SERVER_PORT, socket, revieceQueue);
+      receive = new FileCopyClientReceive(UDP_PACKET_SIZE, servername, SERVER_PORT, socket, revieceQueue);
     } catch (UnknownHostException e) {
       syslog(facility, 1, "UnknownHost");
     }
 
-    reciveThread = new Thread(reviece);
+    reciveThread = new Thread(receive);
     fileSendThread = new Thread(fileSend);
     window = new ArrayList<>(windowSize);
   }
@@ -159,9 +157,9 @@ public class FileCopyClient extends Thread {
         byte[] fileInputArray;
 
         if (availableBytes > UDP_PACKET_SIZE - 8) {
-          fileInputArray = fileInputStream.readNBytes(UDP_PACKET_SIZE - 8);
+          fileInputArray = fileInputStream.readNBytes(UDP_PACKET_SIZE - 8); // when the bytes not fit into one UPD_PACKET_SIZE
         } else {
-          fileInputArray = fileInputStream.readAllBytes();
+          fileInputArray = fileInputStream.readAllBytes(); // when the bytes fit in one UPD_PACKET_SIZE
         }
 
         FCpacket packetToSend = new FCpacket(currentSequenceNumber,fileInputArray, fileInputArray.length);
@@ -185,9 +183,9 @@ public class FileCopyClient extends Thread {
           }
         }
         for (FCpacket packet2 : window) {
-          seqInWindow.append(packet2.getSeqNum() + ", ");
+          seqInWindow.append(packet2.getSeqNum()).append(", ");
         }
-        syslog(facility,8, "Window: " + seqInWindow.toString());
+        syslog(facility,8, "Window: " + seqInWindow);
 
       }
 
@@ -224,7 +222,7 @@ public class FileCopyClient extends Thread {
    * TODO Selective Repeat Verfahren
    */
   public void timeoutTask(long seqNum) {
-    syslog(facility,8,"OhWeee TiMeOuT: " + seqNum);
+    syslog(facility,8,"OhWeee TiMeOuT for packet seqNum: " + seqNum);
     for (FCpacket packet : window) {
       startTimer(packet);
       if (packet.getSeqNum() == seqNum) {
