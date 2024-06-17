@@ -13,6 +13,8 @@ import java.net.*;
 import java.util.Collections;
 import java.util.LinkedList;
 
+import static syslog.Syslog.syslog;
+
 
 public class FileCopyServer {
   // -------- Constants
@@ -21,6 +23,7 @@ public class FileCopyServer {
   public final static int UDP_PACKET_SIZE = 1008;
   public final static int CONNECTION_TIMEOUT = 3000; // milliseconds
   public final static long DELAY = 10; // Propagation delay in ms
+  private final static String facility = "SERVER";
 
   // -------- Parameters (will be adjusted with values in the first packet)
   public int windowSize = 128;
@@ -257,7 +260,7 @@ public class FileCopyServer {
 
   private void testOut(String out) {
     if (TEST_OUTPUT_MODE) {
-      System.err.println("Server: " + out);
+      syslog(facility,8,String.format("Thread %s: %s", Thread.currentThread().getName(), out));
     }
   }
 
