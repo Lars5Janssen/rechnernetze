@@ -7,12 +7,11 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.concurrent.BlockingQueue;
 
 import static syslog.Syslog.syslog;
 
-public class FileCopyClientRecive implements Runnable{
+public class FileCopyClientReceive implements Runnable{
 
     private DatagramSocket socket;
     private BlockingQueue<FCpacket> queue;
@@ -21,11 +20,11 @@ public class FileCopyClientRecive implements Runnable{
     private final int SERVER_PORT;
     private String facility = "REVICE";
 
-    public FileCopyClientRecive(int UDP_PACKET_SIZE, String SERVER_IP, int SERVER_PORT, DatagramSocket socket, BlockingQueue<FCpacket> queue) throws UnknownHostException {
+    public FileCopyClientReceive(int UDP_PACKET_SIZE, String SERVER_IP, int SERVER_PORT, DatagramSocket socket, BlockingQueue<FCpacket> queue) throws UnknownHostException {
         this(UDP_PACKET_SIZE, InetAddress.getByName(SERVER_IP), SERVER_PORT, socket, queue);
     }
 
-    public FileCopyClientRecive(int UDP_PACKET_SIZE, InetAddress SERVER_IP, int SERVER_PORT, DatagramSocket socket, BlockingQueue<FCpacket> queue) {
+    public FileCopyClientReceive(int UDP_PACKET_SIZE, InetAddress SERVER_IP, int SERVER_PORT, DatagramSocket socket, BlockingQueue<FCpacket> queue) {
         this.UDP_PACKET_SIZE = UDP_PACKET_SIZE;
         this.SERVER_IP = SERVER_IP;
         this.SERVER_PORT = SERVER_PORT;

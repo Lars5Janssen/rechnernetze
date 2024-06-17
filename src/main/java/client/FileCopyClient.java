@@ -67,7 +67,7 @@ public class FileCopyClient extends Thread {
   public BlockingQueue<byte[]> sendQueue = new LinkedBlockingQueue<>();
 
   private FileCopyClientSend fileSend;
-  private FileCopyClientRecive reviece;
+  private FileCopyClientReceive receive;
   private Thread reciveThread;
   private Thread fileSendThread;
 
@@ -89,7 +89,7 @@ public class FileCopyClient extends Thread {
       syslog(facility, 1, "UnknownHost");
     }
 
-    reciveThread = new Thread(reviece);
+    reciveThread = new Thread(receive);
     fileSendThread = new Thread(fileSend);
     window = Collections.synchronizedList(new ArrayList<>(windowSize)); // https://docs.oracle.com/javase/6/docs/api/java/util/Collections.html#synchronizedList(java.util.List)
     ackWindow = Collections.synchronizedList(new ArrayList<>(windowSize-1));
