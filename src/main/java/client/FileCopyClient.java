@@ -9,7 +9,6 @@ package client;
  */
 
 import com.google.common.primitives.Ints;
-import com.google.common.primitives.Longs;
 import server.FC_Timer;
 import server.FCpacket;
 
@@ -68,7 +67,7 @@ public class FileCopyClient extends Thread {
 
   private FileCopyClientSend fileSend;
   private FileCopyClientReceive receive;
-  private Thread reciveThread;
+  private Thread receiveThread;
   private Thread fileSendThread;
 
   // Constructor
@@ -84,12 +83,12 @@ public class FileCopyClient extends Thread {
 
     try {
       fileSend = new FileCopyClientSend(UDP_PACKET_SIZE, servername, SERVER_PORT, socket, sendQueue);
-      reviece = new FileCopyClientRecive(UDP_PACKET_SIZE, servername, SERVER_PORT, socket, revieceQueue);
+      receive = new FileCopyClientReceive(UDP_PACKET_SIZE, servername, SERVER_PORT, socket, revieceQueue);
     } catch (UnknownHostException e) {
       syslog(facility, 1, "UnknownHost");
     }
 
-    reciveThread = new Thread(receive);
+    receiveThread = new Thread(receive);
     fileSendThread = new Thread(fileSend);
     window = Collections.synchronizedList(new ArrayList<>(windowSize)); // https://docs.oracle.com/javase/6/docs/api/java/util/Collections.html#synchronizedList(java.util.List)
     ackWindow = Collections.synchronizedList(new ArrayList<>(windowSize-1));
@@ -143,9 +142,9 @@ public class FileCopyClient extends Thread {
   }
 
   private boolean threadsAlive() {
-    return reciveThread.isAlive() &&
+    return receiveThread.isAlive() &&
             fileSendThread.isAlive() &&
-            !reciveThread.isInterrupted() &&
+            !receiveThread.isInterrupted() &&
             !fileSendThread.isInterrupted();
   }
 
@@ -249,7 +248,7 @@ public class FileCopyClient extends Thread {
   }
 
   public void runFileCopyClient() throws Exception {
-    reciveThread.start();
+    receiveThread.start();
     fileSendThread.start();
 
     FCpacket controlPacket = makeControlPacket();
@@ -274,7 +273,7 @@ public class FileCopyClient extends Thread {
       }
 
       if (fileInputStream.available() == 0 && window.isEmpty()) {
-        reciveThread.interrupt();
+        receiveThread.interrupt();
         fileSendThread.interrupt();
         socket.close();
       }
