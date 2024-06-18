@@ -28,7 +28,7 @@ import static syslog.Syslog.syslog;
 public class FileCopyClient extends Thread {
 // TODO receive rechtschreibung
   // -------- Constants
-  public final static boolean TEST_OUTPUT_MODE = true;
+  public final static boolean TEST_OUTPUT_MODE = false;
 
   public final int SERVER_PORT = 23000;
 
