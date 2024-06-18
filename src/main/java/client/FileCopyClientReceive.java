@@ -43,6 +43,7 @@ public class FileCopyClientReceive implements Runnable{
                 DatagramPacket receivedPacket = new DatagramPacket(new byte[UDP_PACKET_SIZE], UDP_PACKET_SIZE);
                 socket.receive(receivedPacket);
                 FCpacket fCpacket = new FCpacket(receivedPacket.getData(), receivedPacket.getLength());
+                fCpacket.setValidACK(true);
                 syslog(facility,8, "Recived packet with seqnum: " + fCpacket.getSeqNum());
                 queue.add(fCpacket);
             } catch (IOException e) {

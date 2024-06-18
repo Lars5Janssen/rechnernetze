@@ -215,4 +215,13 @@ public class FCpacket implements Comparable<FCpacket> {
     }
   }
 
+  @Override
+  public String toString() {
+    return "FCpacket {" +
+            "seqNumber=" + seqNumber +
+            ", validACK=" + validACK +
+            ", dataLen=" + dataLen +
+            ", timestamp=" + timestamp +
+            '}'+ "\n";
+  }
 }

@@ -17,6 +17,7 @@ import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -90,78 +91,6 @@ public class FileCopyClient extends Thread {
     currentSeq = 1;
   }
 
-  private byte intToByte(int x) {
-    return (byte) (x & 0xFF);
-  }
-
-  /**
-   * Kombiniert die drei Eingaben in ein einzelnes Byte-Array mit Semikolons als Trennzeichen.
-   *
-   * @param dest Das Byte-Array für den Zielpfad.
-   * @param window Das Byte für die Fenstergröße.
-   * @param errorRate Das Byte-Array für die Fehlerrate.
-   * @return Ein Byte-Array, das alle Eingaben mit Semikolons getrennt kombiniert.
-   */
-  public static byte[] combineArrays(byte[] dest, byte window, byte[] errorRate) {
-    byte semicolon = (byte) ';';
-    int combinedLength = dest.length + 1 + 1 + 1 + errorRate.length; // dest + ';' + window + ';' + errorRate
-    byte[] combined = new byte[combinedLength];
-    int index = 0;
-
-    // Kopiere das dest-Array
-    System.arraycopy(dest, 0, combined, index, dest.length);
-    index += dest.length;
-
-    combined[index++] = semicolon; // Füge das Semikolon hinzu
-    combined[index++] = window; // Füge das window-Byte hinzu
-    combined[index++] = semicolon; // Füge das Semikolon hinzu
-
-    // Kopiere das errorRate-Array
-    System.arraycopy(errorRate, 0, combined, index, errorRate.length);
-
-    return combined;
-  }
-
-  private FileInputStream openFileInputStream() {
-    if (sourcePath != null) {
-      File file = new File(sourcePath);
-      try {
-        return new FileInputStream(file);
-      } catch (FileNotFoundException e) {
-        syslog(facility,1,"ERROR: File not Found");
-      }
-    }
-    syslog(facility, 1, "ERROR: SourcePath is Null.");
-    return null;
-  }
-
-  private boolean threadsAlive() {
-    return receiveThread.isAlive() &&
-            fileSendThread.isAlive() &&
-            !receiveThread.isInterrupted() &&
-            !fileSendThread.isInterrupted();
-  }
-
-  private FCpacket lacePackage() {
-    byte[] fileInputArray = new byte[0];
-    try {
-      int availableBytes = fileInputStream.available();
-
-      if (availableBytes > UDP_PACKET_SIZE - 8) {
-        fileInputArray = fileInputStream.readNBytes(UDP_PACKET_SIZE - 8);
-      } else {
-        fileInputArray = fileInputStream.readAllBytes();
-      }
-    } catch (IOException e) {
-      syslog(facility, 1, "ERROR while reading from fileInputStream");
-    }
-    return new FCpacket(currentSeq++,fileInputArray, fileInputArray.length);
-  }
-
-  private void sendPackage(FCpacket packet) {
-    sendQueue.add(packet.getSeqNumBytesAndData());
-  }
-
   private void markAsAcked(long seqNum) {
     try {
       windowSemaphore.acquire();
@@ -174,14 +103,6 @@ public class FileCopyClient extends Thread {
     } catch (InterruptedException e) {
       syslog(facility,2, "ERROR: Semaphore interrupted");
     }
-  }
-
-  private int convertSeqNumToIndex(long seqNum) {
-    if (seqNum < seqPointer) {
-      syslog(facility,1,"ERROR: SeqNum to low");
-      return -1;
-    }
-    return Ints.checkedCast(seqNum - seqPointer);
   }
 
   private FCpacket getPacket(long seqNum) {
@@ -285,11 +206,14 @@ public class FileCopyClient extends Thread {
       ackWindow.add(i, false);
     }
 
-    fillWindow();
+    fillWindow(); // Vorschlag das senden rausziehen und nur das window mit der methode füllen nicht mehr!!
+
+    syslog(facility,8, "The SetUp Window: " + Arrays.toString(window.toArray()));
 
     while (threadsAlive()) {
       if (!revieceQueue.isEmpty()) {
         FCpacket recivedPacket = revieceQueue.take();
+        syslog(facility,8, "Packet recived. The Window: \n" + Arrays.toString(window.toArray()));
 
         if (recivedPacket.isValidACK()) {
           markAsAcked(recivedPacket.getSeqNum()); // may result in the first window index == null
@@ -340,7 +264,6 @@ public class FileCopyClient extends Thread {
     startTimer(packetToRestart);
   }
 
-
   /**
    *
    * Computes the current timeout value (in nanoseconds)
@@ -349,6 +272,57 @@ public class FileCopyClient extends Thread {
   // ToDo
   }
 
+  /**
+   * At this point wh have prooved methods.
+   */
+
+  private int convertSeqNumToIndex(long seqNum) {
+    if (seqNum < seqPointer) {
+      syslog(facility,1,"ERROR: SeqNum to low. SeqNum: " + seqNum);
+      return -1;
+    }
+    return Ints.checkedCast(seqNum - seqPointer);
+  }
+
+  private FCpacket lacePackage() {
+    byte[] fileInputArray = new byte[0];
+    try {
+      int availableBytes = fileInputStream.available();
+
+      if (availableBytes > UDP_PACKET_SIZE - 8) {
+        fileInputArray = fileInputStream.readNBytes(UDP_PACKET_SIZE - 8);
+      } else {
+        fileInputArray = fileInputStream.readAllBytes();
+      }
+    } catch (IOException e) {
+      syslog(facility, 1, "ERROR while reading from fileInputStream");
+    }
+    return new FCpacket(currentSeq++,fileInputArray, fileInputArray.length);
+  }
+
+  private void sendPackage(FCpacket packet) {
+    sendQueue.add(packet.getSeqNumBytesAndData());
+  }
+
+  private FileInputStream openFileInputStream() {
+    if (sourcePath != null) {
+      File file = new File(sourcePath);
+      try {
+        return new FileInputStream(file);
+      } catch (FileNotFoundException e) {
+        syslog(facility,1,"ERROR: File not Found");
+      }
+    }
+    syslog(facility, 1, "ERROR: SourcePath is Null.");
+    return null;
+  }
+
+  private boolean threadsAlive() {
+    return receiveThread.isAlive() &&
+            fileSendThread.isAlive() &&
+            !receiveThread.isInterrupted() &&
+            !fileSendThread.isInterrupted();
+  }
 
   /**
    *
