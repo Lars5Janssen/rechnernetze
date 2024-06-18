@@ -236,7 +236,7 @@ public class FileCopyClient extends Thread {
     try {
       windowSemaphore.acquire();
       for (int i = 0; i < windowSize - 1; i++) {
-        if (window.get(i) != null) {
+        if (window.get(i) == null) {
           FCpacket newPacket = lacePackage();
           window.add(i, newPacket);
           startTimer(newPacket);
