@@ -171,7 +171,7 @@ public class FileCopyClient extends Thread {
     sendQueue.add(packet.getSeqNumBytesAndData());
   }
 
-  private void markAsAcked(long seqNum) {
+  private void markAsAcked(long seqNum) throws InterruptedException {
     windowSemaphore.acquire();
     if (seqPointer + 1 == seqNum) {
       window.addFirst(null);
@@ -189,7 +189,7 @@ public class FileCopyClient extends Thread {
     return Ints.checkedCast(seqNum - seqPointer);
   }
 
-  private FCpacket getPacket(long seqNum) {
+  private FCpacket getPacket(long seqNum) throws InterruptedException {
     // TODO sanity checks
     // TODO but for what? i forgor...
     windowSemaphore.acquire();
@@ -198,7 +198,7 @@ public class FileCopyClient extends Thread {
     return packet;
   }
 
-  private boolean sanityCheckWindow() {
+  private boolean sanityCheckWindow() throws InterruptedException {
     boolean sanityFlag = false;
 
     windowSemaphore.acquire();
@@ -216,7 +216,7 @@ public class FileCopyClient extends Thread {
     return true;
   }
 
-  private void fillWindow() { // Fill up window / Setup
+  private void fillWindow() throws InterruptedException { // Fill up window / Setup
     sanityCheckWindow();
 
     windowSemaphore.acquire();
@@ -231,7 +231,7 @@ public class FileCopyClient extends Thread {
     windowSemaphore.release();
   }
 
-  private void moveUpWindow() {
+  private void moveUpWindow() throws InterruptedException {
     windowSemaphore.acquire();
     // Do these steps until the first element is not null or all elements are null
     while (window.getFirst() == null && !window.isEmpty()) { // TODO isEmpty() --> is null element considered empty?
@@ -314,7 +314,7 @@ public class FileCopyClient extends Thread {
    * Implementation specific task performed at timeout
    * meaning selective repeat
    */
-  public void timeoutTask(long seqNum) {
+  public void timeoutTask(long seqNum) throws InterruptedException {
     FCpacket packetToRestart = getPacket(seqNum);
 
     cancelTimer(packetToRestart);

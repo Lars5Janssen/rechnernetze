@@ -48,7 +48,11 @@ public class FC_Timer extends Thread {
 
     /* Perform task if not cancelled */
     if (!isCancelled) {
-      myFCC.timeoutTask(seqNum);
+        try {
+            myFCC.timeoutTask(seqNum);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
   }
 }
