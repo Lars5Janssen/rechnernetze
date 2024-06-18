@@ -21,6 +21,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.Semaphore;
 
 import static syslog.Syslog.syslog;
 
@@ -55,6 +56,7 @@ public class FileCopyClient extends Thread {
 
   private List<FCpacket> window;
   private List<Boolean> ackWindow;
+  private Semaphore windowSemaphore;
   private long seqPointer;
   private long currentSeq;
 
@@ -92,6 +94,7 @@ public class FileCopyClient extends Thread {
     fileSendThread = new Thread(fileSend);
     window = Collections.synchronizedList(new ArrayList<>(windowSize)); // https://docs.oracle.com/javase/6/docs/api/java/util/Collections.html#synchronizedList(java.util.List)
     ackWindow = Collections.synchronizedList(new ArrayList<>(windowSize-1));
+    windowSemaphore = new Semaphore(1);
     seqPointer = 1;
     currentSeq = 1;
   }
@@ -169,11 +172,13 @@ public class FileCopyClient extends Thread {
   }
 
   private void markAsAcked(long seqNum) {
+    windowSemaphore.acquire();
     if (seqPointer + 1 == seqNum) {
       window.addFirst(null);
     } else {
       ackWindow.add(convertSeqNumToIndex(seqNum)-1, true);
     }
+    windowSemaphore.release();
   }
 
   private int convertSeqNumToIndex(long seqNum) {
@@ -186,12 +191,17 @@ public class FileCopyClient extends Thread {
 
   private FCpacket getPacket(long seqNum) {
     // TODO sanity checks
-    return window.get(convertSeqNumToIndex(seqNum));
+    // TODO but for what? i forgor...
+    windowSemaphore.acquire();
+    FCpacket packet = window.get(convertSeqNumToIndex(seqNum));
+    windowSemaphore.release();
+    return packet;
   }
 
   private boolean sanityCheckWindow() {
     boolean sanityFlag = false;
 
+    windowSemaphore.acquire();
     for (int i = 0; i < windowSize - 1; i++) {
       if (sanityFlag && window.get(i) != null) {
         syslog(facility,1,"Sanitycheck failed!!!");
@@ -200,6 +210,7 @@ public class FileCopyClient extends Thread {
       } else if (window.get(i) == null) {
         sanityFlag = true;
       }
+      windowSemaphore.release();
     }
 
     return true;
@@ -208,21 +219,20 @@ public class FileCopyClient extends Thread {
   private void fillWindow() { // Fill up window / Setup
     sanityCheckWindow();
 
+    windowSemaphore.acquire();
     for (int i = 0; i < windowSize - 1; i++) {
       if (window.get(i) != null) {
         FCpacket newPacket = lacePackage();
-
         window.add(i, newPacket);
         startTimer(newPacket);
         sendPackage(newPacket);
       }
     }
+    windowSemaphore.release();
   }
 
-  // TODO the whole logic is not thread sage, what if while adjusting the window list, a packet that is not the first, thus being
-  // TODO represented in the bool list gets acked. The whole logic would fall apart.
-  // TODO --> implement semaphore for both lists at the same time, as they are to be seen as one entity.
   private void moveUpWindow() {
+    windowSemaphore.acquire();
     // Do these steps until the first element is not null or all elements are null
     while (window.getFirst() == null && !window.isEmpty()) { // TODO isEmpty() --> is null element considered empty?
       // for all indexes in window but the last copy the next index's value to here
@@ -245,6 +255,7 @@ public class FileCopyClient extends Thread {
       }
       ackWindow.addLast(false); // fill the last index with null, as it has to be empty
     }
+    windowSemaphore.release();
   }
 
   public void runFileCopyClient() throws Exception {
