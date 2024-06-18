@@ -172,13 +172,17 @@ public class FileCopyClient extends Thread {
   }
 
   private void markAsAcked(long seqNum) {
-    windowSemaphore.acquire();
-    if (seqPointer + 1 == seqNum) {
-      window.addFirst(null);
-    } else {
-      ackWindow.add(convertSeqNumToIndex(seqNum)-1, true);
+    try {
+      windowSemaphore.acquire();
+      if (seqPointer + 1 == seqNum) {
+        window.addFirst(null);
+      } else {
+        ackWindow.add(convertSeqNumToIndex(seqNum)-1, true);
+      }
+      windowSemaphore.release();
+    } catch (InterruptedException e) {
+      syslog(facility,2, "ERROR: Semaphore interrupted");
     }
-    windowSemaphore.release();
   }
 
   private int convertSeqNumToIndex(long seqNum) {
@@ -192,70 +196,88 @@ public class FileCopyClient extends Thread {
   private FCpacket getPacket(long seqNum) {
     // TODO sanity checks
     // TODO but for what? i forgor...
-    windowSemaphore.acquire();
-    FCpacket packet = window.get(convertSeqNumToIndex(seqNum));
-    windowSemaphore.release();
-    return packet;
+    try {
+      windowSemaphore.acquire();
+      FCpacket packet = window.get(convertSeqNumToIndex(seqNum));
+      windowSemaphore.release();
+      return packet;
+    } catch (InterruptedException e) {
+      syslog(facility,2, "ERROR: Semaphore interrupted");
+      return null;
+    }
   }
 
   private boolean sanityCheckWindow() {
     boolean sanityFlag = false;
 
-    windowSemaphore.acquire();
-    for (int i = 0; i < windowSize - 1; i++) {
-      if (sanityFlag && window.get(i) != null) {
-        syslog(facility,1,"Sanitycheck failed!!!");
-        throw new RuntimeException("Sanitycheck failed!!!");
-        //return false;
-      } else if (window.get(i) == null) {
-        sanityFlag = true;
+    try {
+      windowSemaphore.acquire();
+      for (int i = 0; i < windowSize - 1; i++) {
+        if (sanityFlag && window.get(i) != null) {
+          syslog(facility, 1, "Sanitycheck failed!!!");
+          throw new RuntimeException("Sanitycheck failed!!!");
+          //return false;
+        } else if (window.get(i) == null) {
+          sanityFlag = true;
+        }
+        windowSemaphore.release();
       }
-      windowSemaphore.release();
-    }
 
-    return true;
+      return true;
+    } catch (InterruptedException e) {
+      syslog(facility,2, "ERROR: Semaphore interrupted");
+      return false;
+    }
   }
 
   private void fillWindow() { // Fill up window / Setup
     sanityCheckWindow();
 
-    windowSemaphore.acquire();
-    for (int i = 0; i < windowSize - 1; i++) {
-      if (window.get(i) != null) {
-        FCpacket newPacket = lacePackage();
-        window.add(i, newPacket);
-        startTimer(newPacket);
-        sendPackage(newPacket);
+    try {
+      windowSemaphore.acquire();
+      for (int i = 0; i < windowSize - 1; i++) {
+        if (window.get(i) != null) {
+          FCpacket newPacket = lacePackage();
+          window.add(i, newPacket);
+          startTimer(newPacket);
+          sendPackage(newPacket);
+        }
       }
+      windowSemaphore.release();
+    } catch (InterruptedException e) {
+      syslog(facility,2, "ERROR: Semaphore interrupted");
     }
-    windowSemaphore.release();
   }
 
   private void moveUpWindow() {
-    windowSemaphore.acquire();
-    // Do these steps until the first element is not null or all elements are null
-    while (window.getFirst() == null && !window.isEmpty()) { // TODO isEmpty() --> is null element considered empty?
-      // for all indexes in window but the last copy the next index's value to here
-      for (int i = 0; i < windowSize - 1; i++) {
-        if (i != windowSize - 1) window.add(i, window.get(i+1));
-      }
-      window.addLast(null); // fill the last index with null, as it has to be empty
-      seqPointer++; // one iteration over the list has been done --> move pointer +1
+    try {
+      windowSemaphore.acquire();
+      // Do these steps until the first element is not null or all elements are null
+      while (window.getFirst() == null && !window.isEmpty()) { // TODO isEmpty() --> is null element considered empty?
+        // for all indexes in window but the last copy the next index's value to here
+        for (int i = 0; i < windowSize - 1; i++) {
+          if (i != windowSize - 1) window.add(i, window.get(i + 1));
+        }
+        window.addLast(null); // fill the last index with null, as it has to be empty
+        seqPointer++; // one iteration over the list has been done --> move pointer +1
 
-      // if the first bool is true, the previous second FCpacket was also acked, therefore kill it!
-      // if ackWindow.getFirst() is false, the information is not needed,
-      // as the corresponding (first in window) packet not being null contains the same information
-      if (ackWindow.getFirst()) {
-        window.addFirst(null);
-      }
+        // if the first bool is true, the previous second FCpacket was also acked, therefore kill it!
+        // if ackWindow.getFirst() is false, the information is not needed,
+        // as the corresponding (first in window) packet not being null contains the same information
+        if (ackWindow.getFirst()) {
+          window.addFirst(null);
+        }
 
-      // for all indexes in ackWindow but the last copy the next index's value to here
-      for (int i = 0; i < windowSize - 2; i++) {
-        if (i != windowSize - 2) ackWindow.add(i, ackWindow.get(i+1));
+        // for all indexes in ackWindow but the last copy the next index's value to here
+        for (int i = 0; i < windowSize - 2; i++) {
+          if (i != windowSize - 2) ackWindow.add(i, ackWindow.get(i + 1));
+        }
+        ackWindow.addLast(false); // fill the last index with null, as it has to be empty
       }
-      ackWindow.addLast(false); // fill the last index with null, as it has to be empty
+      windowSemaphore.release();
+    } catch (InterruptedException e) {
+      syslog(facility,2, "ERROR: Semaphore interrupted");
     }
-    windowSemaphore.release();
   }
 
   public void runFileCopyClient() throws Exception {
@@ -265,7 +287,12 @@ public class FileCopyClient extends Thread {
     FCpacket controlPacket = makeControlPacket();
     sendPackage(controlPacket);
 
-    while (revieceQueue.isEmpty()) {} // Block execution until first package (hopefully ack for 0)
+    for (int i = 0; i < windowSize - 1; i++) {
+      window.add(i,null);
+    }
+    for (int i = 0; i < windowSize - 2; i++) {
+      ackWindow.add(i, false);
+    }
 
     fillWindow();
 
