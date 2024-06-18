@@ -29,40 +29,31 @@ public class FileCopyClient extends Thread {
 // TODO receive rechtschreibung
   // -------- Constants
   public final static boolean TEST_OUTPUT_MODE = false;
+  private final static String facility = "Client";
 
   public final int SERVER_PORT = 23000;
-
   public final int UDP_PACKET_SIZE = 1008;
+  public final int PACKET_SIZE_WITHOUT_SEQ = UDP_PACKET_SIZE - 8;
 
   // -------- Public parms
   public String servername;
-
   public String sourcePath;
-
   public String destPath;
-
   public int windowSize;
-
   public long serverErrorRate;
 
   // -------- Variables
   // current default timeout in nanoseconds
   private long timeoutValue = 10000000L;
 
-  // ... ToDo
   private DatagramSocket socket;
-
   private FileInputStream fileInputStream;
 
   private List<FCpacket> window;
   private List<Boolean> ackWindow;
-  private Semaphore windowSemaphore;
+  private Semaphore windowSemaphore; // TODO change how semaphore is used. use it in main logic loop maybe?
   private long seqPointer;
   private long currentSeq;
-
-  public final int PACKET_SIZE_WITHOUT_SEQ = UDP_PACKET_SIZE - 8;
-
-  private String facility = "Client";
 
   public BlockingQueue<FCpacket> revieceQueue = new LinkedBlockingQueue<>();
   public BlockingQueue<byte[]> sendQueue = new LinkedBlockingQueue<>();
