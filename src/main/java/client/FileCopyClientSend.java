@@ -43,7 +43,7 @@ public class FileCopyClientSend implements Runnable {
                 packet = queue.take();
                 socket.send(new DatagramPacket(packet, packet.length, SERVER_IP, SERVER_PORT));
                 FCpacket fCpacket = new FCpacket(packet, packet.length);
-                syslog(facility,8,"Sent Packet with seqnum: " + fCpacket.getSeqNum());
+                //syslog(facility,8,"Sent Packet with seqnum: " + fCpacket.getSeqNum());
             } catch (InterruptedException | IOException e) {
                 syslog(facility,5,"Interrupted");
                 break;

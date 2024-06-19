@@ -157,7 +157,7 @@ public class FileCopyClient extends Thread {
         if (window.get(i) == null) {
           FCpacket newPacket = lacePackage();
           window.set(i, newPacket);
-          //startTimer(newPacket);
+          startTimer(newPacket);
           sendPackage(newPacket);
         }
       }
@@ -236,6 +236,7 @@ public class FileCopyClient extends Thread {
             moveUpWindow();
             fillWindow();
             sanityCheckWindow(); // just to be sure
+            syslog(facility,8,"Window after send of: " + currentSeq + "\n" + Arrays.toString(window.toArray()));
           }
         }
       }
