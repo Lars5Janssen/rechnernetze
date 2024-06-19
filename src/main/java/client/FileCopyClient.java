@@ -104,7 +104,7 @@ public class FileCopyClient extends Thread {
       }
   }
 
-  private FCpacket getPacket(long seqNum) {
+  private FCpacket getPacketFromWindow(long seqNum) {
     // TODO sanity checks
     // TODO but for what? i forgor...
     if (!isInWindow(seqNum)) return null;
@@ -113,17 +113,25 @@ public class FileCopyClient extends Thread {
 
   private boolean sanityCheckWindow() {
     boolean sanityFlag = false;
-    if (window.getFirst().getSeqNum() != seqNumBeforeWindow + 1) throw new RuntimeException("SeqPointer/first-window-element sanity check failed");
-    if (nextSeqNum != seqNumBeforeWindow + 1 + windowSize) throw new RuntimeException("SeqPointer/currentSeq sanity check failed");
+    if (window.getFirst() != null && window.getFirst().getSeqNum() != seqNumBeforeWindow + 1) throw new RuntimeException("SeqPointer/first-window-element sanity check failed");
 
-      for (int i = 0; i < windowSize - 1; i++) {
-        FCpacket packet = window.get(i);
-        if (sanityFlag && packet != null) {
-          throw new RuntimeException("Window working state sanity check failed!!!");
-        } else if (packet == null) {
-          sanityFlag = true;
-        }
+    for (int i = 0; i <= windowSize - 1; i++) {
+      FCpacket packet = window.get(i);
+      if (sanityFlag && packet != null) {
+        throw new RuntimeException("Window working state sanity check failed!!!");
+      } else if (packet == null) {
+        sanityFlag = true;
       }
+    }
+
+    if (nextSeqNum != seqNumBeforeWindow + 1 + window.size()) {
+      for (int i = windowSize - 1; i > 0 ; i--) {
+        if (window.get(i) != null && !(window.get(i).getData().length < PACKET_SIZE_WITHOUT_SEQ)) {
+          throw new RuntimeException("SeqPointer: " + seqNumBeforeWindow + "/nextSeqNum " + nextSeqNum + " sanity check failed with window: " + Arrays.toString(window.toArray()));
+        }
+
+      }
+    }
 
       return true;
   }
@@ -131,10 +139,13 @@ public class FileCopyClient extends Thread {
   private void fillWindow() { // Fill up window / Setup
 
       try {
-          if (fileInputStream.available() == 0) return;
+          if (fileInputStream.available() == 0) {
+           return;
+          }
       } catch (IOException e) {
         syslog(facility,1, "ERROR: FileInputStream exception");
       }
+      syslog(facility,8, "BEFORE fillWindow():\n" + Arrays.toString(window.toArray()));
 
       for (int i = 0; i <= windowSize - 1; i++) {
         if (window.get(i) == null) {
@@ -144,6 +155,8 @@ public class FileCopyClient extends Thread {
           sendPackage(newPacket);
         }
       }
+    syslog(facility,8, "AFTER fillWindow():\n" + Arrays.toString(window.toArray()));
+
   }
 
   private boolean windowIsNull() {
@@ -164,6 +177,7 @@ public class FileCopyClient extends Thread {
         }
         window.set(windowSize - 1, null); // fill the last index with null, as it has to be empty
         seqNumBeforeWindow++; // one iteration over the list has been done --> move pointer +1
+
 
         // if the first bool is true, the previous second FCpacket was also acked, therefore kill it!
         // if ackWindow.getFirst() is false, the information is not needed,
@@ -198,7 +212,6 @@ public class FileCopyClient extends Thread {
     windowSemaphore.acquire();
     fillWindow();
     windowSemaphore.release();
-    syslog(facility,8, "Window AFTER setup:\n" + Arrays.toString(window.toArray()));
 
     while (threadsAlive()) {
       if (!revieceQueue.isEmpty()) {
@@ -212,7 +225,6 @@ public class FileCopyClient extends Thread {
           if (window.getFirst() == null) {
             moveUpWindow();
             fillWindow();
-            syslog(facility,8,"Window after send of: " + (nextSeqNum - 1) + "\n" + Arrays.toString(window.toArray()));
           }
           sanityCheckWindow(); // just to be sure
           syslog(facility,9, "Exit received packet for: " + recivedPacket.getSeqNum());
@@ -239,35 +251,41 @@ public class FileCopyClient extends Thread {
     timer.start();
   }
 
-  public void cancelTimer(FCpacket packet) {
+  public void cancelTimer(FCpacket packet, String facilitySTRING) {
     /* Cancel timer for the given FCpacket */
-    syslog(facility,8,"Cancel Timer for packet: " + packet.getSeqNum());
+    syslog(facilitySTRING,8,"Cancel Timer for packet: " + packet.getSeqNum());
     if (packet.getTimer() != null) {
       packet.getTimer().interrupt();
     }
   }
+
+  public void cancelTimer(FCpacket packet) {
+    cancelTimer(packet, facility);
+  }
+
+
 
   /**
    * Implementation specific task performed at timeout
    * meaning selective repeat
    */
   public void timeoutTask(long seqNum) {
-    String oldFacility = facility;
+    String facilityTwo = "TIMEOUT";
+
     try {
       windowSemaphore.acquire();
-      facility = "TIMEOUT";
       if (!isInWindow(seqNum)) return;
-      FCpacket packetToRestart = getPacket(seqNum);
+      FCpacket packetToRestart = getPacketFromWindow(seqNum);
       if (packetToRestart == null) return;
 
-      cancelTimer(packetToRestart);
+      //cancelTimer(packetToRestart, facilityTwo);
+      syslog(facilityTwo,8, "NOW SENDING PACKAGE");
       sendPackage(packetToRestart);
       startTimer(packetToRestart);
       windowSemaphore.release();
     } catch (InterruptedException e) {
-      syslog(facility+"TTT" ,1,"timeoutTask(" + seqNum + ") was interrupted during SEMAPHORE");
+      if (isInWindow(seqNum)) syslog(facilityTwo,1,"timeoutTask(" + seqNum + ") was interrupted during SEMAPHORE");
     }
-    facility = oldFacility;
   }
 
   /**
@@ -285,11 +303,12 @@ public class FileCopyClient extends Thread {
   private boolean isInWindow(long seqNum) {
       return seqNum > seqNumBeforeWindow;
   }
+
   private int convertSeqNumToIndex(long seqNum) {
     if (!isInWindow(seqNum)) {
       throw new RuntimeException("DID NOT UPHOLD CONVENTION OF USING convertCheck() first!");
     }
-    return Ints.checkedCast(seqNum - seqNumBeforeWindow);
+    return Ints.checkedCast(seqNum - seqNumBeforeWindow - 1);
   }
 
   private FCpacket lacePackage() {

@@ -10,6 +10,12 @@ public final class Syslog {
     syslog(String.valueOf(facility),level,message);
   }
 
+  public static void syslog(
+          String facility, int level, Object message) {
+    syslog(facility, level, String.valueOf(message));
+  }
+
+
   public static void syslog(String facility, int level, String message) {
     printOut(String.format("Facility: %s, Level: %d, Message:\n%s", facility, level, message));
   }
