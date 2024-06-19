@@ -27,7 +27,7 @@ import java.util.concurrent.Semaphore;
 import static syslog.Syslog.syslog;
 
 public class FileCopyClient extends Thread {
-// TODO receive rechtschreibung
+
   // -------- Constants
   public final static boolean TEST_OUTPUT_MODE = false;
   private final static String facility = "Client";
@@ -87,7 +87,7 @@ public class FileCopyClient extends Thread {
     window = Collections.synchronizedList(new ArrayList<>(windowSize)); // https://docs.oracle.com/javase/6/docs/api/java/util/Collections.html#synchronizedList(java.util.List)
     ackWindow = Collections.synchronizedList(new ArrayList<>(windowSize-1));
     windowSemaphore = new Semaphore(1);
-    seqPointer = 1;
+    seqPointer = 0;
     currentSeq = 1;
   }
 
@@ -95,9 +95,9 @@ public class FileCopyClient extends Thread {
     try {
       windowSemaphore.acquire();
       if (seqPointer + 1 == seqNum) {
-        window.addFirst(null);
+        window.set(0, null);
       } else {
-        ackWindow.add(convertSeqNumToIndex(seqNum)-1, true);
+        ackWindow.set(convertSeqNumToIndex(seqNum)-1, true);
       }
       windowSemaphore.release();
     } catch (InterruptedException e) {
@@ -145,13 +145,19 @@ public class FileCopyClient extends Thread {
   private void fillWindow() { // Fill up window / Setup
     sanityCheckWindow();
 
-    try {
+      try {
+          if (fileInputStream.available() == 0) return;
+      } catch (IOException e) {
+        syslog(facility,1, "ERROR: FileInputStream exception");
+      }
+
+      try {
       windowSemaphore.acquire();
-      for (int i = 0; i < windowSize - 1; i++) {
+      for (int i = 0; i <= windowSize - 1; i++) {
         if (window.get(i) == null) {
           FCpacket newPacket = lacePackage();
-          window.add(i, newPacket);
-          startTimer(newPacket);
+          window.set(i, newPacket);
+          //startTimer(newPacket);
           sendPackage(newPacket);
         }
       }
@@ -161,30 +167,39 @@ public class FileCopyClient extends Thread {
     }
   }
 
+  private boolean windowIsNull() {
+    for (int i = 0; i <= windowSize - 1; i++) {
+      if (window.get(i) != null) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   private void moveUpWindow() {
     try {
       windowSemaphore.acquire();
       // Do these steps until the first element is not null or all elements are null
-      while (window.getFirst() == null && !window.isEmpty()) { // TODO isEmpty() --> is null element considered empty?
+      while (window.getFirst() == null && !windowIsNull()) {
         // for all indexes in window but the last copy the next index's value to here
-        for (int i = 0; i < windowSize - 1; i++) {
-          if (i != windowSize - 1) window.add(i, window.get(i + 1));
+        for (int i = 0; i <= windowSize - 1; i++) {
+          if (i != windowSize - 1) window.set(i, window.get(i + 1));
         }
-        window.addLast(null); // fill the last index with null, as it has to be empty
+        window.set(windowSize - 1, null); // fill the last index with null, as it has to be empty
         seqPointer++; // one iteration over the list has been done --> move pointer +1
 
         // if the first bool is true, the previous second FCpacket was also acked, therefore kill it!
         // if ackWindow.getFirst() is false, the information is not needed,
         // as the corresponding (first in window) packet not being null contains the same information
         if (ackWindow.getFirst()) {
-          window.addFirst(null);
+          window.set(0, null);
         }
 
         // for all indexes in ackWindow but the last copy the next index's value to here
-        for (int i = 0; i < windowSize - 2; i++) {
-          if (i != windowSize - 2) ackWindow.add(i, ackWindow.get(i + 1));
+        for (int i = 0; i <= windowSize - 2; i++) {
+          if (i != windowSize - 2) ackWindow.set(i, ackWindow.get(i + 1));
         }
-        ackWindow.addLast(false); // fill the last index with null, as it has to be empty
+        ackWindow.set(windowSize - 2, false); // fill the last index with null, as it has to be empty
       }
       windowSemaphore.release();
     } catch (InterruptedException e) {
@@ -199,21 +214,21 @@ public class FileCopyClient extends Thread {
     FCpacket controlPacket = makeControlPacket();
     sendPackage(controlPacket);
 
-    for (int i = 0; i < windowSize - 1; i++) {
-      window.add(i,null);
+    for (int i = 0; i <= windowSize - 1; i++) {
+      window.add(null);
     }
-    for (int i = 0; i < windowSize - 2; i++) {
-      ackWindow.add(i, false);
+    for (int i = 0; i <= windowSize - 2; i++) {
+      ackWindow.add(false);
     }
+    syslog(facility,9, String.valueOf(windowIsNull()));
 
-    fillWindow(); // Vorschlag das senden rausziehen und nur das window mit der methode füllen nicht mehr!!
-
-    syslog(facility,8, "The SetUp Window: " + Arrays.toString(window.toArray()));
+    revieceQueue.take(); // Clear ACK of controlPacket
+    fillWindow();
+    syslog(facility,8, "Window AFTER setup:\n" + Arrays.toString(window.toArray()));
 
     while (threadsAlive()) {
       if (!revieceQueue.isEmpty()) {
         FCpacket recivedPacket = revieceQueue.take();
-        syslog(facility,8, "Packet recived. The Window: \n" + Arrays.toString(window.toArray()));
 
         if (recivedPacket.isValidACK()) {
           markAsAcked(recivedPacket.getSeqNum()); // may result in the first window index == null
@@ -224,8 +239,8 @@ public class FileCopyClient extends Thread {
           }
         }
       }
-
-      if (fileInputStream.available() == 0 && window.isEmpty()) {
+      if (fileInputStream.available() == 0 && windowIsNull()) {
+        syslog(facility,8, "EXIT NOW!");
         receiveThread.interrupt();
         fileSendThread.interrupt();
         socket.close();
