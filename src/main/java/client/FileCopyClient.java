@@ -53,6 +53,7 @@ public class FileCopyClient extends Thread {
   private double expRTT = timeoutValue;
   private double jitter = 1.0;
   private long meassuredRTT = 0;
+  private StringBuilder sb;
   private DatagramSocket socket;
   private FileInputStream fileInputStream;
 
@@ -105,6 +106,8 @@ public class FileCopyClient extends Thread {
     receiveThread.start();
     fileSendThread.start();
 
+    sb = new StringBuilder();
+
     FCpacket controlPacket = makeControlPacket();
     sendPackage(controlPacket);
 
@@ -115,6 +118,9 @@ public class FileCopyClient extends Thread {
       ackWindow.add(false);
     }
 
+    sb.append("expRTT,jitter,timeoutValue\n");
+    sb.append(String.format("%s,%s,%s\n",
+            expRTT, jitter, timeoutValue));
     fileInputStream.available();
     int perfecNumOfPackets = (int) Math.ceil( (double) fileInputStream.available() / PACKET_SIZE_WITHOUT_SEQ);
 
@@ -162,6 +168,10 @@ public class FileCopyClient extends Thread {
             "\nbut sent " + sentPackets + " Packets" +
             "\n" + resentPackets + " where resent");
     writeToFile();
+
+    FileWriter myWriter = new FileWriter("RTT.csv");
+    myWriter.write(sb.toString());
+    myWriter.close();
 
   }
 
@@ -341,6 +351,8 @@ public class FileCopyClient extends Thread {
     expRTT = (1.0-Y) * expRTT + Y * (double) meassuredRTT;
     jitter = (1.0-X) * jitter + X * Math.abs((double) meassuredRTT - expRTT);
     timeoutValue = (long) (expRTT + 4.0 * jitter);
+    sb.append(String.format("%s,%s,%s\n",
+            expRTT, jitter, timeoutValue));
   }
 
   /**
