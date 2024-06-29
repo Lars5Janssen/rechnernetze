@@ -186,7 +186,7 @@ public class FileCopyClient extends Thread {
 
     meassuredRTT = timestamp - windowPacket.getTimestamp();
     cancelTimer(windowPacket);
-    computeTimeoutValue();
+    computeTimeoutValue(false);
 
       if (window.getFirst().getSeqNum() == seqNum) {
         window.set(0, null);
@@ -336,6 +336,7 @@ public class FileCopyClient extends Thread {
       syslog(facilityTwo,8, "NOW SENDING PACKAGE " + seqNum);
       sendPackage(packetToRestart);
       resentPackets++;
+      computeTimeoutValue(true);
       startTimer(packetToRestart);
       getPacketFromWindow(seqNum).setTimestamp(System.nanoTime());
       windowSemaphore.release();
@@ -348,10 +349,16 @@ public class FileCopyClient extends Thread {
    *
    * Computes the current timeout value (in nanoseconds)
    */
-  public void computeTimeoutValue() {
-    expRTT = (1.0-Y) * expRTT + Y * (double) meassuredRTT;
-    jitter = (1.0-X) * jitter + X * Math.abs((double) meassuredRTT - expRTT);
-    timeoutValue = (long) (expRTT + 4.0 * jitter);
+  public void computeTimeoutValue(boolean isRetransmitt) {
+    if (isRetransmitt) {
+      timeoutValue*=2L;
+    } else {
+      expRTT = (1.0 - Y) * expRTT + Y * (double) meassuredRTT;
+      jitter = (1.0 - X) * jitter + X * Math.abs((double) meassuredRTT - expRTT);
+      timeoutValue = (long) (expRTT + 4.0 * jitter);
+      //if (isRetransmitt) timeoutValue*=2.0;
+    }
+    if (timeoutValue > 500000000L) timeoutValue = 500000000L;
     sb.append(String.format("%s,%s,%s\n",
             expRTT, jitter, timeoutValue));
   }
