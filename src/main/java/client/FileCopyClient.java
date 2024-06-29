@@ -136,7 +136,7 @@ public class FileCopyClient extends Thread {
 
         if (recivedPacket.isValidACK()) {
           windowSemaphore.acquire();
-          sanityCheckWindow();
+          //sanityCheckWindow();
           markAsAcked(recivedPacket.getSeqNum(), recivedPacket.getTimestamp()); //Set the measuredRTT inside the method | may result in the first window index == null
           syslog(facility,8, "After " + recivedPacket.getSeqNum() +
                   "\nMeasured: " + meassuredRTT +
@@ -148,7 +148,7 @@ public class FileCopyClient extends Thread {
             moveUpWindow();
             fillWindow();
           }
-          sanityCheckWindow(); // just to be sure
+          //sanityCheckWindow(); // just to be sure
           //syslog(facility,9, "Exit received packet for: " + recivedPacket.getSeqNum());
           windowSemaphore.release();
         }
@@ -337,6 +337,7 @@ public class FileCopyClient extends Thread {
       sendPackage(packetToRestart);
       resentPackets++;
       startTimer(packetToRestart);
+      getPacketFromWindow(seqNum).setTimestamp(System.nanoTime());
       windowSemaphore.release();
     } catch (InterruptedException e) {
       if (isInWindow(seqNum)) syslog(facilityTwo,1,"timeoutTask(" + seqNum + ") was interrupted during SEMAPHORE");
