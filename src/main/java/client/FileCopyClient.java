@@ -173,6 +173,7 @@ public class FileCopyClient extends Thread {
     return window.get(convertSeqNumToIndex(seqNum)); // FCPacket
   }
 
+  // TODO better and safer sanityChecks
   private boolean sanityCheckWindow() {
     boolean sanityFlag = false;
     if (window.getFirst() != null && window.getFirst().getSeqNum() != seqNumBeforeWindow + 1 &&
