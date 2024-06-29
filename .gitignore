@@ -1,4 +1,5 @@
 .gradle
+syslog.txt
 src/main/resources/result.txt
 src/main/resources/result.txt.java
 build/

@@ -25,6 +25,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.Semaphore;
 
 import static syslog.Syslog.syslog;
+import static syslog.Syslog.writeToFile;
 
 public class FileCopyClient extends Thread {
 
@@ -45,7 +46,7 @@ public class FileCopyClient extends Thread {
 
   // -------- Variables
   // current default timeout in nanoseconds
-  private long timeoutValue = 10000000L;
+  private long timeoutValue = 100000000L;
 
   private DatagramSocket socket;
   private FileInputStream fileInputStream;
@@ -55,6 +56,8 @@ public class FileCopyClient extends Thread {
   private Semaphore windowSemaphore; // TODO change how semaphore is used. use it in main logic loop maybe?
   private long seqNumBeforeWindow;
   private long nextSeqNum;
+
+  private int sentPackets = -1;
 
   public BlockingQueue<FCpacket> revieceQueue = new LinkedBlockingQueue<>();
   public BlockingQueue<byte[]> sendQueue = new LinkedBlockingQueue<>();
@@ -89,6 +92,61 @@ public class FileCopyClient extends Thread {
     windowSemaphore = new Semaphore(1);
     seqNumBeforeWindow = 0; //seqPointer
     nextSeqNum = 1; // currentSeq
+  }
+
+
+  public void runFileCopyClient() throws Exception {
+    receiveThread.start();
+    fileSendThread.start();
+
+    FCpacket controlPacket = makeControlPacket();
+    sendPackage(controlPacket);
+
+    for (int i = 0; i <= windowSize - 1; i++) {
+      window.add(null);
+    }
+    for (int i = 0; i <= windowSize - 2; i++) {
+      ackWindow.add(false);
+    }
+
+    fileInputStream.available();
+    int perfecNumOfPackets = (int) Math.ceil( (double) fileInputStream.available() / PACKET_SIZE_WITHOUT_SEQ);
+
+    revieceQueue.take(); // Clear ACK of controlPacket
+    windowSemaphore.acquire();
+    fillWindow();
+    windowSemaphore.release();
+
+    while (threadsAlive()) {
+      if (!revieceQueue.isEmpty()) {
+        FCpacket recivedPacket = revieceQueue.take();
+        syslog(facility,9, "Enter received packet for: " + recivedPacket.getSeqNum());
+
+        if (recivedPacket.isValidACK()) {
+          windowSemaphore.acquire();
+          sanityCheckWindow();
+          markAsAcked(recivedPacket.getSeqNum()); // may result in the first window index == null
+          if (window.getFirst() == null) {
+            moveUpWindow();
+            fillWindow();
+          }
+          sanityCheckWindow(); // just to be sure
+          syslog(facility,9, "Exit received packet for: " + recivedPacket.getSeqNum());
+          windowSemaphore.release();
+        }
+      }
+      if (fileInputStream.available() == 0 && windowIsNull()) {
+        syslog(facility,8, "EXIT NOW!");
+        receiveThread.interrupt();
+        fileSendThread.interrupt();
+        socket.close();
+      }
+
+    }
+
+    syslog(facility,8, "Should have sent " + perfecNumOfPackets + " Packets,\nbut sent " + sentPackets);
+    writeToFile();
+
   }
 
   private void markAsAcked(long seqNum) {
@@ -194,53 +252,6 @@ public class FileCopyClient extends Thread {
       }
   }
 
-  public void runFileCopyClient() throws Exception {
-    receiveThread.start();
-    fileSendThread.start();
-
-    FCpacket controlPacket = makeControlPacket();
-    sendPackage(controlPacket);
-
-    for (int i = 0; i <= windowSize - 1; i++) {
-      window.add(null);
-    }
-    for (int i = 0; i <= windowSize - 2; i++) {
-      ackWindow.add(false);
-    }
-
-    revieceQueue.take(); // Clear ACK of controlPacket
-    windowSemaphore.acquire();
-    fillWindow();
-    windowSemaphore.release();
-
-    while (threadsAlive()) {
-      if (!revieceQueue.isEmpty()) {
-        FCpacket recivedPacket = revieceQueue.take();
-        syslog(facility,9, "Enter received packet for: " + recivedPacket.getSeqNum());
-
-        if (recivedPacket.isValidACK()) {
-          windowSemaphore.acquire();
-          sanityCheckWindow();
-          markAsAcked(recivedPacket.getSeqNum()); // may result in the first window index == null
-          if (window.getFirst() == null) {
-            moveUpWindow();
-            fillWindow();
-          }
-          sanityCheckWindow(); // just to be sure
-          syslog(facility,9, "Exit received packet for: " + recivedPacket.getSeqNum());
-          windowSemaphore.release();
-        }
-      }
-      if (fileInputStream.available() == 0 && windowIsNull()) {
-        syslog(facility,8, "EXIT NOW!");
-        receiveThread.interrupt();
-        fileSendThread.interrupt();
-        socket.close();
-      }
-    }
-
-  }
-
   /**
   * Timer Operations
   */
@@ -328,6 +339,7 @@ public class FileCopyClient extends Thread {
   }
 
   private void sendPackage(FCpacket packet) {
+    sentPackets++;
     sendQueue.add(packet.getSeqNumBytesAndData());
   }
 
@@ -343,6 +355,7 @@ public class FileCopyClient extends Thread {
     syslog(facility, 1, "ERROR: SourcePath is Null.");
     return null;
   }
+
 
   private boolean threadsAlive() {
     return receiveThread.isAlive() &&
