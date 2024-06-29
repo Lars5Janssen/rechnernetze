@@ -1,0 +1,31 @@
+"Normal"
+== - Das letzte Packet welches geACK'd wurde -
+private int RTT_n
+private int expRTT_n
+private int Jitter_n
+==
+x = 0.25   y=0.125
+expRTT_n = (1-y) * expRTT_n + y * RTT_n -> Durchscnitt wielange das nächste pakete brauchen wird
+
+Jitter_n = (1-x) * Jitter_n + x * | RTT_n - expRTT_n| -> Erwartete vezägerung des nächsten pakets
+
+Timeout_n+1 = expRTT_n + 4 * Jitter_n -> Timeout zeit für das nächste paket
+
+|--> Packet versenden
+
+------
+Re-Transmit --> TIMEOUT in FCpacket hinterlegt
+                this.getTimeout * 2 (fuer resend)
+
+Timeout_n+1 = 2 * Timeout_n -> Neue Timeout wenn die zeitscheibe abgelaufen ist
+|--> Re-Transmit
+
+------
+"Logging"
+
+-----
+
+Was müssen wir über die Pakete speichern?
+expRTT
+RTT
+Jitter

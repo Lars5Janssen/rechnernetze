@@ -37,6 +37,8 @@ public class FileCopyClient extends Thread {
   public final int SERVER_PORT = 23000;
   public final int UDP_PACKET_SIZE = 1008;
   public final int PACKET_SIZE_WITHOUT_SEQ = UDP_PACKET_SIZE - 8;
+  private final double X = 0.25;
+  private final double Y = 0.125;
 
   // -------- Public parms
   public String servername;
@@ -48,7 +50,9 @@ public class FileCopyClient extends Thread {
   // -------- Variables
   // current default timeout in nanoseconds
   private long timeoutValue = 100000000L;
-
+  private double expRTT = timeoutValue;
+  private double jitter = 1.0;
+  private long meassuredRTT = 0;
   private DatagramSocket socket;
   private FileInputStream fileInputStream;
 
@@ -92,7 +96,7 @@ public class FileCopyClient extends Thread {
     window = Collections.synchronizedList(new ArrayList<>(windowSize)); // https://docs.oracle.com/javase/6/docs/api/java/util/Collections.html#synchronizedList(java.util.List)
     ackWindow = Collections.synchronizedList(new ArrayList<>(windowSize-1));
     windowSemaphore = new Semaphore(1);
-    seqNumBeforeWindow = -windowSize; //seqPointer
+    seqNumBeforeWindow = 0; //seqPointer
     nextSeqNum = 1; // currentSeq
   }
 
@@ -127,7 +131,13 @@ public class FileCopyClient extends Thread {
         if (recivedPacket.isValidACK()) {
           windowSemaphore.acquire();
           sanityCheckWindow();
-          markAsAcked(recivedPacket.getSeqNum()); // may result in the first window index == null
+          markAsAcked(recivedPacket.getSeqNum(), recivedPacket.getTimestamp()); //Set the measuredRTT inside the method | may result in the first window index == null
+          syslog(facility,8, "After " + recivedPacket.getSeqNum() +
+                  "\nMeasured: " + meassuredRTT +
+                  "\nexpRTT: " + expRTT +
+                  "\njitter: " + jitter +
+                  "\nTimeout: " + timeoutValue);
+          syslog(facility,8, "RTT for " + recivedPacket.getSeqNum() + " is " + meassuredRTT);
           if (window.getFirst() == null) {
             moveUpWindow();
             fillWindow();
@@ -145,6 +155,8 @@ public class FileCopyClient extends Thread {
       }
 
     }
+    syslog(facility,8, X);
+    syslog(facility,8, Y);
 
     syslog(facility,8, "Sent packets W/O errors " + perfecNumOfPackets +
             "\nbut sent " + sentPackets + " Packets" +
@@ -153,14 +165,22 @@ public class FileCopyClient extends Thread {
 
   }
 
-  private void markAsAcked(long seqNum) {
+  private void markAsAcked(long seqNum, long timestamp) {
     if (!isInWindow(seqNum)) return;
 
     int index = convertSeqNumToIndex(seqNum);
-    cancelTimer(window.get(index));
+    //syslog(facility,9, "index: " + index +
+    //        "\nBeforPointer: " + seqNumBeforeWindow +
+    //        "\nWindow:\n" + Arrays.toString(window.toArray()));
+    FCpacket windowPacket = window.get(index);
+
+    meassuredRTT = timestamp - windowPacket.getTimestamp();
+    cancelTimer(windowPacket);
+    computeTimeoutValue();
 
       if (window.getFirst().getSeqNum() == seqNum) {
         window.set(0, null);
+        seqNumBeforeWindow++;
       } else {
         ackWindow.set(index - 1, true);
       }
@@ -222,7 +242,8 @@ public class FileCopyClient extends Thread {
           window.set(i, newPacket);
           startTimer(newPacket);
           sendPackage(newPacket);
-          seqNumBeforeWindow++;
+          newPacket.setTimestamp(System.nanoTime());
+          //seqNumBeforeWindow++;
         }
       }
     syslog(facility,8, "AFTER fillWindow():\n" + Arrays.toString(window.toArray()));
@@ -246,14 +267,13 @@ public class FileCopyClient extends Thread {
           if (i != windowSize - 1) window.set(i, window.get(i + 1));
         }
         window.set(windowSize - 1, null); // fill the last index with null, as it has to be empty
-        //seqNumBeforeWindow++; // one iteration over the list has been done --> move pointer +1
-
 
         // if the first bool is true, the previous second FCpacket was also acked, therefore kill it!
         // if ackWindow.getFirst() is false, the information is not needed,
         // as the corresponding (first in window) packet not being null contains the same information
         if (ackWindow.getFirst()) {
           window.set(0, null);
+          seqNumBeforeWindow++;
         }
 
         // for all indexes in ackWindow but the last copy the next index's value to here
@@ -317,8 +337,10 @@ public class FileCopyClient extends Thread {
    *
    * Computes the current timeout value (in nanoseconds)
    */
-  public void computeTimeoutValue(long sampleRTT) {
-  // ToDo
+  public void computeTimeoutValue() {
+    expRTT = (1.0-Y) * expRTT + Y * (double) meassuredRTT;
+    jitter = (1.0-X) * jitter + X * Math.abs((double) meassuredRTT - expRTT);
+    timeoutValue = (long) (expRTT + 4.0 * jitter);
   }
 
   /**
