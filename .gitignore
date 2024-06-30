@@ -1,5 +1,5 @@
 .gradle
-syslog.txt
+syslog*.txt
 RTT.csv
 src/main/resources/result.txt
 src/main/resources/result.txt.java

@@ -29,9 +29,9 @@ public final class Syslog {
     printOut(line);
     sb.append(line + "\n");
   }
-  public static void writeToFile() {
+  public static void writeToFile(String filename) {
     try {
-      FileWriter myWriter = new FileWriter("syslog.txt");
+      FileWriter myWriter = new FileWriter(filename);
       myWriter.write(sb.toString());
       myWriter.close();
     } catch (IOException e) {

@@ -54,10 +54,12 @@ public class FileCopyClient extends Thread {
   private double expRTT = timeoutValue;
   private double jitter = 1.0;
   private long meassuredRTT = 0;
+  private int gottenacks = 0;
+  private long addedRTTs = 0;
   private StringBuilder sb;
   private final DatagramSocket socket;
   private final FileInputStream fileInputStream;
-
+  private String sendString;
   private final List<FCpacket> window;
   private final List<Boolean> ackWindow;
   private final Semaphore windowSemaphore;
@@ -188,29 +190,34 @@ public class FileCopyClient extends Thread {
 
     syslog(
         facility,
-        8,
+        12,
         "Sent packets W/O errors " + perfecNumOfPackets
             + "\nbut sent " + sentPackets + " Packets\n"
             + resentPackets + " where resent");
 
-    writeToFile();
+    syslog(facility, 12, "Client ended at: " + endTime);
+    endTime = LocalTime.now();
+    Duration duration = Duration.between(startTime, endTime);
+    syslog(facility, 12, "Duration: " + duration);
+    syslog(facility,12, "Timer expired " + resentPackets + " times");
+    syslog(facility,12,"Recived ACKs: " + gottenacks);
+    syslog(facility,12,"Median RTT: " + (addedRTTs/gottenacks));
+    writeToFile("syslog" + sendString.substring(sendString.indexOf(";")+1).replace(";",",") + ".txt");
 
     FileWriter myWriter = new FileWriter("RTT.csv");
     myWriter.write(sb.toString());
     myWriter.close();
-    endTime = LocalTime.now();
-    Duration duration = Duration.between(startTime, endTime);
-    syslog(facility, 8, "Client ended at: " + endTime);
-    syslog(facility, 8, "Duration: " + duration);
   }
 
   private void markAsAcked(long seqNum, long timestamp) {
+    gottenacks++;
     if (!isInWindow(seqNum)) return;
 
     int index = convertSeqNumToIndex(seqNum);
     FCpacket windowPacket = window.get(index);
 
     meassuredRTT = timestamp - windowPacket.getTimestamp();
+    addedRTTs+= meassuredRTT;
     cancelTimer(windowPacket);
     computeTimeoutValue(false);
 
@@ -402,7 +409,7 @@ public class FileCopyClient extends Thread {
   public FCpacket makeControlPacket() {
     /* Create first packet with seq num 0. Return value: FCPacket with
     (0 destPath ; windowSize ; errorRate) */
-    String sendString = destPath + ";" + windowSize + ";" + serverErrorRate;
+    sendString = destPath + ";" + windowSize + ";" + serverErrorRate;
     byte[] sendData = null;
     syslog(facility, 8, "Making Controllpackage with string of: " + sendString);
       sendData = sendString.getBytes(StandardCharsets.UTF_8);
@@ -425,6 +432,7 @@ public class FileCopyClient extends Thread {
               errorRates) {
         myClient = new FileCopyClient(argv[0], argv[1], argv[2], String.valueOf(size), String.valueOf(errorRate));
         myClient.runFileCopyClient();
+        sleep(Duration.ofSeconds(5));
       }
     }
   }
