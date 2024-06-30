@@ -417,7 +417,15 @@ public class FileCopyClient extends Thread {
 
   public static void main(String[] argv) throws Exception {
     FileCopyClient myClient;
-      myClient = new FileCopyClient(argv[0], argv[1], argv[2], argv[3], argv[4]);
-      myClient.runFileCopyClient();
+    List<Integer> windowSizes = List.of(1,10,100);
+    List<Integer> errorRates = List.of(10,100,1000);
+    for (Integer size :
+            windowSizes) {
+      for (Integer errorRate :
+              errorRates) {
+        myClient = new FileCopyClient(argv[0], argv[1], argv[2], String.valueOf(size), String.valueOf(errorRate));
+        myClient.runFileCopyClient();
+      }
+    }
   }
 }
