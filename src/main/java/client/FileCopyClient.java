@@ -17,6 +17,8 @@ import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -73,6 +75,10 @@ public class FileCopyClient extends Thread {
   private final Thread receiveThread;
   private final Thread fileSendThread;
 
+  // Time Counter
+  LocalTime startTime = null;
+    LocalTime endTime = null;
+
   // Constructor
   public FileCopyClient(
       String serverArg,
@@ -111,6 +117,8 @@ public class FileCopyClient extends Thread {
   }
 
   public void runFileCopyClient() throws IOException, InterruptedException {
+    startTime = LocalTime.now();
+    syslog(facility, 8, "Client started at: " + startTime);
     receiveThread.start();
     fileSendThread.start();
 
@@ -128,7 +136,7 @@ public class FileCopyClient extends Thread {
     sb.append("Window size: ").append(windowSize).append("\n");
     sb.append("Server error Rate: ").append(serverErrorRate).append("\n");
     sb.append("expRTT,jitter,timeoutValue\n");
-    sb.append(String.format("%s,%s,%s\n", expRTT, jitter, timeoutValue));
+    sb.append(String.format("%s,%s,%s,%s\n", meassuredRTT , expRTT, jitter, timeoutValue));
 
     int perfecNumOfPackets =
         (int) Math.ceil((double) fileInputStream.available() / PACKET_SIZE_WITHOUT_SEQ);
@@ -190,6 +198,10 @@ public class FileCopyClient extends Thread {
     FileWriter myWriter = new FileWriter("RTT.csv");
     myWriter.write(sb.toString());
     myWriter.close();
+    endTime = LocalTime.now();
+    Duration duration = Duration.between(startTime, endTime);
+    syslog(facility, 8, "Client ended at: " + endTime);
+    syslog(facility, 8, "Duration: " + duration);
   }
 
   private void markAsAcked(long seqNum, long timestamp) {
@@ -329,7 +341,7 @@ public class FileCopyClient extends Thread {
       // if (isRetransmitt) timeoutValue*=2.0;
     }
     if (timeoutValue > 500000000L) timeoutValue = 500000000L;
-    sb.append(String.format("%s,%s,%s\n", expRTT, jitter, timeoutValue));
+    sb.append(String.format("%s,%s,%s,%s\n", meassuredRTT , expRTT, jitter, timeoutValue));
   }
 
   /** At this point wh have prooved methods. */
