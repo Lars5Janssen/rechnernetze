@@ -117,7 +117,8 @@ public class FileCopyClient extends Thread {
     for (int i = 0; i <= windowSize - 2; i++) {
       ackWindow.add(false);
     }
-
+    sb.append("Window size: " + windowSize + "\n");
+    sb.append("Server error Rate: " + serverErrorRate + "\n");
     sb.append("expRTT,jitter,timeoutValue\n");
     sb.append(String.format("%s,%s,%s\n",
             expRTT, jitter, timeoutValue));
