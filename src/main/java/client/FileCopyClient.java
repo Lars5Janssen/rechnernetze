@@ -16,6 +16,7 @@ import java.io.*;
 import java.net.DatagramSocket;
 import java.net.SocketException;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,7 +31,7 @@ public class FileCopyClient extends Thread {
 
   // -------- Constants
   public static final boolean TEST_OUTPUT_MODE = false;
-  private static String facility = "Client";
+  private static final String facility = "Client";
 
   public final int SERVER_PORT = 23000;
   public final int UDP_PACKET_SIZE = 1008;
@@ -52,12 +53,12 @@ public class FileCopyClient extends Thread {
   private double jitter = 1.0;
   private long meassuredRTT = 0;
   private StringBuilder sb;
-  private DatagramSocket socket;
-  private FileInputStream fileInputStream;
+  private final DatagramSocket socket;
+  private final FileInputStream fileInputStream;
 
-  private List<FCpacket> window;
-  private List<Boolean> ackWindow;
-  private Semaphore windowSemaphore;
+  private final List<FCpacket> window;
+  private final List<Boolean> ackWindow;
+  private final Semaphore windowSemaphore;
   private long seqNumBeforeWindow;
   private long nextSeqNum;
 
@@ -69,8 +70,8 @@ public class FileCopyClient extends Thread {
 
   private FileCopyClientSend fileSend;
   private FileCopyClientReceive receive;
-  private Thread receiveThread;
-  private Thread fileSendThread;
+  private final Thread receiveThread;
+  private final Thread fileSendThread;
 
   // Constructor
   public FileCopyClient(
@@ -124,15 +125,16 @@ public class FileCopyClient extends Thread {
     for (int i = 0; i <= windowSize - 2; i++) {
       ackWindow.add(false);
     }
-    sb.append("Window size: " + windowSize + "\n");
-    sb.append("Server error Rate: " + serverErrorRate + "\n");
+    sb.append("Window size: ").append(windowSize).append("\n");
+    sb.append("Server error Rate: ").append(serverErrorRate).append("\n");
     sb.append("expRTT,jitter,timeoutValue\n");
     sb.append(String.format("%s,%s,%s\n", expRTT, jitter, timeoutValue));
-    fileInputStream.available();
+
     int perfecNumOfPackets =
         (int) Math.ceil((double) fileInputStream.available() / PACKET_SIZE_WITHOUT_SEQ);
 
     revieceQueue.take(); // Clear ACK of controlPacket
+
     windowSemaphore.acquire();
     fillWindow();
     windowSemaphore.release();
@@ -144,35 +146,28 @@ public class FileCopyClient extends Thread {
 
         if (recivedPacket.isValidACK()) {
           windowSemaphore.acquire();
-          // sanityCheckWindow();
           markAsAcked(
               recivedPacket.getSeqNum(),
-              recivedPacket
-                  .getTimestamp()); // Set the measuredRTT inside the method | may result in the
-                                    // first window index == null
+              recivedPacket.getTimestamp()); // Set the measuredRTT inside the method | may result in the
+
+          // first window index == null
           syslog(
               facility,
               8,
-              "After "
-                  + recivedPacket.getSeqNum()
-                  + "\nMeasured: "
-                  + meassuredRTT
-                  + "\nexpRTT: "
-                  + expRTT
-                  + "\njitter: "
-                  + jitter
-                  + "\nTimeout: "
-                  + timeoutValue);
+              "After " + recivedPacket.getSeqNum()
+                  + "\nMeasured: " + meassuredRTT
+                  + "\nexpRTT: " + expRTT
+                  + "\njitter: " + jitter
+                  + "\nTimeout: " + timeoutValue);
           syslog(facility, 8, "RTT for " + recivedPacket.getSeqNum() + " is " + meassuredRTT);
           if (window.getFirst() == null) {
             moveUpWindow();
             fillWindow();
           }
-          // sanityCheckWindow(); // just to be sure
-          // syslog(facility,9, "Exit received packet for: " + recivedPacket.getSeqNum());
           windowSemaphore.release();
         }
       }
+
       if (fileInputStream.available() == 0 && windowIsNull()) {
         syslog(facility, 8, "EXIT NOW!");
         receiveThread.interrupt();
@@ -186,14 +181,10 @@ public class FileCopyClient extends Thread {
     syslog(
         facility,
         8,
-        "Sent packets W/O errors "
-            + perfecNumOfPackets
-            + "\nbut sent "
-            + sentPackets
-            + " Packets"
-            + "\n"
-            + resentPackets
-            + " where resent");
+        "Sent packets W/O errors " + perfecNumOfPackets
+            + "\nbut sent " + sentPackets + " Packets\n"
+            + resentPackets + " where resent");
+
     writeToFile();
 
     FileWriter myWriter = new FileWriter("RTT.csv");
@@ -205,9 +196,6 @@ public class FileCopyClient extends Thread {
     if (!isInWindow(seqNum)) return;
 
     int index = convertSeqNumToIndex(seqNum);
-    // syslog(facility,9, "index: " + index +
-    //        "\nBeforPointer: " + seqNumBeforeWindow +
-    //        "\nWindow:\n" + Arrays.toString(window.toArray()));
     FCpacket windowPacket = window.get(index);
 
     meassuredRTT = timestamp - windowPacket.getTimestamp();
@@ -225,48 +213,6 @@ public class FileCopyClient extends Thread {
   private FCpacket getPacketFromWindow(long seqNum) {
     if (!isInWindow(seqNum)) return null;
     return window.get(convertSeqNumToIndex(seqNum)); // FCPacket
-  }
-
-  private boolean sanityCheckWindow() {
-    boolean sanityFlag = false;
-    if (window.getFirst() != null
-        && window.getFirst().getSeqNum() != seqNumBeforeWindow + 1
-        && !(window.getFirst().getData().length < PACKET_SIZE_WITHOUT_SEQ)) {
-      syslog(
-          facility,
-          1,
-          Arrays.toString(window.toArray())
-              + "\nWindowFirstSeq="
-              + window.getFirst().getSeqNum()
-              + "\nseqBeforWindow="
-              + seqNumBeforeWindow);
-      throw new RuntimeException("SeqPointer/first-window-element sanity check failed");
-    }
-
-    for (int i = 0; i <= windowSize - 1; i++) {
-      FCpacket packet = window.get(i);
-      if (sanityFlag && packet != null) {
-        throw new RuntimeException("Window working state sanity check failed!!!");
-      } else if (packet == null) {
-        sanityFlag = true;
-      }
-    }
-
-    if (nextSeqNum != seqNumBeforeWindow + 1 + window.size()) {
-      for (int i = windowSize - 1; i > 0; i--) {
-        if (window.get(i) != null && !(window.get(i).getData().length < PACKET_SIZE_WITHOUT_SEQ)) {
-          throw new RuntimeException(
-              "SeqPointer: "
-                  + seqNumBeforeWindow
-                  + "/nextSeqNum "
-                  + nextSeqNum
-                  + " sanity check failed with window: "
-                  + Arrays.toString(window.toArray()));
-        }
-      }
-    }
-
-    return true;
   }
 
   private void fillWindow() { // Fill up window / Setup
@@ -447,12 +393,8 @@ public class FileCopyClient extends Thread {
     String sendString = destPath + ";" + windowSize + ";" + serverErrorRate;
     byte[] sendData = null;
     syslog(facility, 8, "Making Controllpackage with string of: " + sendString);
-    try {
-      sendData = sendString.getBytes("UTF-8");
-    } catch (UnsupportedEncodingException e) {
-      e.printStackTrace();
-    }
-    return new FCpacket(0, sendData, sendData.length);
+      sendData = sendString.getBytes(StandardCharsets.UTF_8);
+      return new FCpacket(0, sendData, sendData.length);
   }
 
   public void testOut(String out) {
@@ -461,8 +403,9 @@ public class FileCopyClient extends Thread {
     }
   }
 
-  public static void main(String argv[]) throws Exception {
-    FileCopyClient myClient = new FileCopyClient(argv[0], argv[1], argv[2], argv[3], argv[4]);
-    myClient.runFileCopyClient();
+  public static void main(String[] argv) throws Exception {
+    FileCopyClient myClient;
+      myClient = new FileCopyClient(argv[0], argv[1], argv[2], argv[3], argv[4]);
+      myClient.runFileCopyClient();
   }
 }
