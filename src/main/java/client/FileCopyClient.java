@@ -198,7 +198,8 @@ public class FileCopyClient extends Thread {
     endTime = LocalTime.now();
     syslog(facility, 12, "Client ended at: " + endTime);
     Duration duration = Duration.between(startTime, endTime);
-    syslog(facility, 12, "Duration: " + duration);
+    syslog(facility, 12, "Client ended at: " + endTime);
+    syslog(facility, 12, "Duration: " + duration.toString());
     syslog(facility,12, "Timer expired " + resentPackets + " times");
     syslog(facility,12,"Recived ACKs: " + gottenacks);
     syslog(facility,12,"Median RTT: " + (addedRTTs/gottenacks));
@@ -424,8 +425,8 @@ public class FileCopyClient extends Thread {
 
   public static void main(String[] argv) throws Exception {
     FileCopyClient myClient;
-    List<Integer> windowSizes = List.of(1,10,100);
-    List<Integer> errorRates = List.of(10,100,1000);
+    List<Integer> windowSizes = List.of(10,10,100);
+    List<Integer> errorRates = List.of(1000,100,1000);
     for (Integer size :
             windowSizes) {
       for (Integer errorRate :
