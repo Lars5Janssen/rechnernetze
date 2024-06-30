@@ -195,8 +195,8 @@ public class FileCopyClient extends Thread {
             + "\nbut sent " + sentPackets + " Packets\n"
             + resentPackets + " where resent");
 
-    syslog(facility, 12, "Client ended at: " + endTime);
     endTime = LocalTime.now();
+    syslog(facility, 12, "Client ended at: " + endTime);
     Duration duration = Duration.between(startTime, endTime);
     syslog(facility, 12, "Duration: " + duration);
     syslog(facility,12, "Timer expired " + resentPackets + " times");
